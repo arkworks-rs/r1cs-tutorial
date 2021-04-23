@@ -19,8 +19,9 @@ where
     leaf: LeafDigest<P>,
     authentication_path: Path<P>,
 
-    _leaf_h: PhantomData<LeafH>,
-    _two_to_one_h: PhantomData<TwoToOneH>,
+    leaf_hash_params: LeafH::ParametersVar,
+    two_to_one_hash_params: TwoToOneH::ParametersVar,
+
     _f: PhantomData<F>,
 }
 
@@ -32,11 +33,27 @@ where
     F: Field,
 {
     fn generate_constraints(self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
-        let path_var : PathVar<P, LeafH, TwoToOneH, F> = PathVar::new_variable(
-            cs,
-            || Ok(self.authentication_path),
-            AllocationMode::Witness,
+        let path_var : PathVar<P, LeafH, TwoToOneH, F> = PathVar::new_witness(
+            ark_relations::ns!(cs, "path_var"),
+            || Ok(&self.authentication_path),
         )?;
+
+        let root_var = <TwoToOneH as TwoToOneCRHGadget<_, _>>::OutputVar::new_input(
+            ark_relations::ns!(cs, "root_var"),
+            || Ok(&self.root),
+        )?;
+
+        let leaf_var = <LeafH as CRHGadget<_, _>>::OutputVar::new_input(
+            ark_relations::ns!(cs, "leaf_var"),
+            || Ok(&self.leaf),
+        )?;
+
+        path_var.verify_membership(
+            &self.leaf_hash_params,
+            &self.two_to_one_hash_params,
+            &root_var,
+            &leaf_var,
+        );
 
         Ok(())
     }
