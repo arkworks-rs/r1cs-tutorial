@@ -5,6 +5,16 @@ use ark_crypto_primitives::crh::{CRH, pedersen, injective_map::{PedersenCRHCompr
 use ark_crypto_primitives::merkle_tree::{self, MerkleTree};
 
 
+/// Account public key used to verify transaction signatures.
+pub type AccountPublicKey = schnorr::PublicKey<EdwardsProjective>;
+
+/// Account ID.
+pub struct AccountId(u8);
+
+/// Transaction amount.
+pub struct Amount(u64);
+
+
 pub struct Parameters {
     pub sig_params: schnorr::Parameters<EdwardsProjective, Blake2s>,
     pub leaf_crh_params: <MerkleTreeCRH as CRH>::Parameters,
@@ -28,5 +38,6 @@ impl merkle_tree::Config for MerkleConfig {
 }
 
 pub struct State {
-    account_tree: MerkleTree<MerkleConfig>
+    account_tree: MerkleTree<MerkleConfig>,
+    // TODO: add mapping from pubkey to id.
 }
