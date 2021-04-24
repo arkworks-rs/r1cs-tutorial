@@ -6,7 +6,9 @@ use ark_crypto_primitives::merkle_tree::{
 };
 use ark_crypto_primitives::crh::{CRHGadget, TwoToOneCRHGadget};
 use ark_std::marker::PhantomData;
-use ark_r1cs_std::alloc::{AllocVar, AllocationMode};
+use ark_r1cs_std::alloc::AllocVar;
+use ark_r1cs_std::eq::EqGadget;
+use ark_r1cs_std::boolean::Boolean;
 
 pub struct MerkleTreeVerification<P, LeafH, TwoToOneH, F>
 where
@@ -48,12 +50,14 @@ where
             || Ok(&self.leaf),
         )?;
 
-        path_var.verify_membership(
+        let is_member = path_var.verify_membership(
             &self.leaf_hash_params,
             &self.two_to_one_hash_params,
             &root_var,
             &leaf_var,
-        );
+        )?;
+
+        is_member.enforce_equal(&Boolean::TRUE)?;
 
         Ok(())
     }
