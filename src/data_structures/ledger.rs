@@ -4,6 +4,7 @@ use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_crypto_primitives::signature::schnorr;
 use ark_crypto_primitives::crh::{CRH, pedersen, injective_map::{PedersenCRHCompressor, TECompressor}};
 use ark_crypto_primitives::merkle_tree::{self, MerkleTree};
+use crate::data_structures::transaction::Transaction;
 
 
 /// Account public key used to verify transaction signatures.
@@ -26,6 +27,15 @@ pub struct Amount(u64);
 impl Amount {
     pub fn to_bytes_le(&self) -> Vec<u8> {
         self.0.to_le_bytes().to_vec()
+    }
+
+    pub fn checked_add(self, other: Self) -> Option<Self> {
+        self.0.checked_add(other.0).map(Self)
+
+    }
+
+    pub fn checked_sub(self, other: Self) -> Option<Self> {
+        self.0.checked_sub(other.0).map(Self)
     }
 }
 
@@ -110,5 +120,22 @@ impl State {
             account_info.balance = new_amount;
             tree.update(id.0 as usize, &account_info.to_bytes_le()).expect("should exist");
         })
+    }
+
+    /// Update the balance of `id` to `new_amount`.
+    /// Returns `Some(())` if an account with identifier `id` exists already, and `None`
+    /// otherwise.
+    pub fn apply_transaction(&mut self, pp: &Parameters, tx: &Transaction) -> Option<()> {
+        if tx.verify_against_ledger_state(pp, self) {
+            let old_sender_bal = self.id_to_account_info.get(&tx.sender)?.balance;
+            let old_receiver_bal = self.id_to_account_info.get(&tx.recipient)?.balance;
+            let new_sender_bal = old_sender_bal.checked_sub(tx.amount)?;
+            let new_receiver_bal = old_receiver_bal.checked_add(tx.amount)?;
+            self.update_balance(tx.sender, new_sender_bal);
+            self.update_balance(tx.recipient, new_receiver_bal);
+            Some(())
+        } else {
+            None
+        }
     }
 }
