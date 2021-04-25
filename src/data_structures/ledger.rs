@@ -9,6 +9,8 @@ use crate::data_structures::transaction::Transaction;
 
 /// Account public key used to verify transaction signatures.
 pub type AccountPublicKey = schnorr::PublicKey<EdwardsProjective>;
+/// Account public key used to verify transaction signatures.
+pub type AccountSecretKey = schnorr::SecretKey<EdwardsProjective>;
 
 /// Account ID.
 #[derive(Hash, Eq, PartialEq, Copy, Clone, Ord, PartialOrd)]
@@ -75,8 +77,14 @@ impl merkle_tree::Config for MerkleConfig {
 }
 
 pub struct State {
+    /// What is the next available account identifier?
+    pub next_available_account: Option<AccountId>,
+    /// A merkle tree mapping where the i-th leaf corresponds to the i-th account's
+    /// information (= balance and public key).
     pub account_merkle_tree: MerkleTree<MerkleConfig>,
+    /// A mapping from an account's identifier to its information (= balance and public key).
     pub id_to_account_info: HashMap<AccountId, AccountInformation>,
+    /// A mapping from a public key to an account's identifier.
     pub pub_key_to_id: HashMap<schnorr::PublicKey<EdwardsProjective>, AccountId>,
 }
 
@@ -98,16 +106,21 @@ impl State {
         }
     }
 
-    /// Create a new account with account identifier `id` and public key `pub_key`.
-    /// The initial balance is 0.
-    pub fn new_account(&mut self, id: AccountId, public_key: AccountPublicKey) {
-        let account_info = AccountInformation {
-            public_key,
-            balance: Amount(0),
-        };
-        self.pub_key_to_id.insert(public_key, id);
-        self.account_merkle_tree.update(id.0 as usize, &account_info.to_bytes_le()).expect("should exist");
-        self.id_to_account_info.insert(id, account_info);
+    /// Create a new account with public key `pub_key`. Returns a fresh account identifier
+    /// if there is space for a new account, and returns `None` otherwise.
+    /// The initial balance of the new account is 0.
+    pub fn new_account(&mut self, public_key: AccountPublicKey) -> Option<AccountId>{
+        let id = self.next_available_account;
+        id.and_then(|id| {
+            self.next_available_account = self.next_available_account.checked_add(1);
+            let account_info = AccountInformation {
+                public_key,
+                balance: Amount(0),
+            };
+            self.pub_key_to_id.insert(public_key, id);
+            self.account_merkle_tree.update(id.0 as usize, &account_info.to_bytes_le()).expect("should exist");
+            self.id_to_account_info.insert(id, account_info);
+        })
     }
 
 
