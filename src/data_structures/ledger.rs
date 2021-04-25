@@ -6,30 +6,12 @@ use ark_crypto_primitives::crh::{TwoToOneCRH, CRH, pedersen, injective_map::{Ped
 use ark_crypto_primitives::merkle_tree::{self, MerkleTree};
 use ark_std::rand::Rng;
 use crate::data_structures::transaction::Transaction;
+use crate::data_structures::account::{AccountId, AccountInformation, AccountPublicKey, AccountSecretKey};
 
 
-/// Account public key used to verify transaction signatures.
-pub type AccountPublicKey = schnorr::PublicKey<EdwardsProjective>;
-/// Account public key used to verify transaction signatures.
-pub type AccountSecretKey = schnorr::SecretKey<EdwardsProjective>;
 
-/// Account ID.
-#[derive(Hash, Eq, PartialEq, Copy, Clone, Ord, PartialOrd, Debug)]
-pub struct AccountId(u8);
 
-impl AccountId {
-    pub fn to_bytes_le(&self) -> Vec<u8> {
-        vec![self.0]
-    }
-}
-
-impl AccountId {
-    pub fn checked_increment(&mut self) -> Option<()> {
-        self.0.checked_add(1).map(|result| self.0 = result)
-    }
-}
-
-/// Transaction amount.
+/// Represents transaction amounts and account balances.
 #[derive(Hash, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
 pub struct Amount(u64);
 
@@ -44,18 +26,6 @@ impl Amount {
 
     pub fn checked_sub(self, other: Self) -> Option<Self> {
         self.0.checked_sub(other.0).map(Self)
-    }
-}
-
-#[derive(Hash, Eq, PartialEq, Copy, Clone)]
-pub struct AccountInformation {
-    pub public_key: AccountPublicKey,
-    pub balance: Amount
-}
-
-impl AccountInformation {
-    pub fn to_bytes_le(&self) -> Vec<u8> {
-        ark_ff::to_bytes![self.public_key, self.balance.to_bytes_le()].unwrap()
     }
 }
 

@@ -2,7 +2,8 @@ use ark_std::rand::Rng;
 use blake2::Blake2s;
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_crypto_primitives::signature::{SignatureScheme, schnorr::{self, Schnorr}};
-use crate::data_structures::ledger::{self, AccountPublicKey, AccountId, Amount, AccountSecretKey};
+use crate::data_structures::ledger::{self, Amount};
+use crate::data_structures::account::{AccountPublicKey, AccountId, AccountSecretKey};
 
 /// Transaction transferring some amount from one account to another.
 pub struct Transaction {
