@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use blake2::Blake2s;
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_crypto_primitives::signature::schnorr;
@@ -9,11 +10,26 @@ use ark_crypto_primitives::merkle_tree::{self, MerkleTree};
 pub type AccountPublicKey = schnorr::PublicKey<EdwardsProjective>;
 
 /// Account ID.
+#[derive(Hash, Eq, PartialEq, Copy, Clone, Ord, PartialOrd)]
 pub struct AccountId(u8);
 
 /// Transaction amount.
+#[derive(Hash, Eq, PartialEq, Copy, Clone)]
 pub struct Amount(u64);
 
+
+#[derive(Hash, Eq, PartialEq, Copy, Clone)]
+pub struct AccountInformation {
+    public_key: AccountPublicKey,
+    balance: Amount
+}
+
+impl AccountInformation {
+    fn to_bytes(&self) -> Vec<u8> {
+        ark_ff::to_bytes![self.public_key, self.balance]
+    }
+
+}
 
 pub struct Parameters {
     pub sig_params: schnorr::Parameters<EdwardsProjective, Blake2s>,
@@ -25,7 +41,8 @@ pub type MerkleTreeCRH = PedersenCRHCompressor<EdwardsProjective, TECompressor, 
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TwoToOneWindow;
-// `WINDOW_SIZE * NUM_WINDOWS` = 2 * 256 bits
+
+// `WINDOW_SIZE * NUM_WINDOWS` = 2 * 256 bits = enough for hashing two outputs.
 impl pedersen::Window for TwoToOneWindow {
     const WINDOW_SIZE: usize = 128;
     const NUM_WINDOWS: usize = 4;
@@ -38,6 +55,46 @@ impl merkle_tree::Config for MerkleConfig {
 }
 
 pub struct State {
-    account_tree: MerkleTree<MerkleConfig>,
-    // TODO: add mapping from pubkey to id.
+    pub account_merkle_tree: MerkleTree<MerkleConfig>,
+    pub id_to_account_info: HashMap<AccountId, AccountInformation>,
+    pub pub_key_to_id: HashMap<AccountId, schnorr::PublicKey<EdwardsProjective>>,
+}
+
+impl State {
+    /// Create an empty ledger that supports `num_accounts` accounts.
+    pub fn new(num_accounts: usize, parameters: &Parameters) -> Self {
+        let height = ark_std::log2(num_accounts);
+        let account_tree = MerkleTree::blank(
+            &parameters.leaf_crh_params,
+            &parameters.two_to_one_crh_params,
+            height,
+        );
+        let pub_key_to_id = HashMap::with_capacity(num_accounts);
+        Self {
+            account_tree,
+            pub_key_to_id,
+        }
+    }
+
+    /// Create a new account with account identifier `id` and public key `pub_key`.
+    /// The initial balance is 0.
+    pub fn new_account(&mut self, id: AccountId, pub_key: AccountPublicKey) {
+        let account_info = AccountInformation {
+            pub_key,
+            balance: Amount(0),
+        };
+        self.pub_key_to_id.insert(pub_key, id);
+        self.account_tree.update(id.0 as usize, &account_info.to_bytes());
+    }
+
+
+    /// Update the balance of `id` to `new_amount`.
+    /// Returns `Some(())` if an account with identifier `id` exists already, and `None`
+    /// otherwise.
+    pub fn update_balance(&mut self, id: AccountId, new_amount: Amount) -> Option<()> {
+        self.id_to_account_info.get_mut(&id).map(|account_info| {
+            account_info.balance = new_amount;
+            self.account_tree.update(id.0 as usize, &account_info.to_bytes());
+        })
+    }
 }
