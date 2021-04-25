@@ -46,13 +46,14 @@ impl Transaction {
     ) -> bool {
         // Lookup public key corresponding to sender ID
         if let Some(sender_acc_info) = state.id_to_account_info.get(&self.sender) {
-            let mut result = false;
+            let mut result = true;
             // Verify the signature against the sender pubkey.
-            result |= self.verify_signature(&parameters.sig_params, &sender_acc_info.public_key);
+            result &= self.verify_signature(&parameters.sig_params, &sender_acc_info.public_key);
+            // assert!(result, "signature verification failed");
             // Verify the amount is available in the sender account.
-            result |= self.amount <= sender_acc_info.balance;
+            result &= self.amount <= sender_acc_info.balance;
             // Verify that recipient account exists.
-            result |= state.id_to_account_info.get(&self.recipient).is_some();
+            result &= state.id_to_account_info.get(&self.recipient).is_some();
             result
         } else {
             false
@@ -65,7 +66,7 @@ impl Transaction {
         sender: AccountId,
         recipient: AccountId,
         amount: Amount,
-        sender_sk: AccountSecretKey,
+        sender_sk: &AccountSecretKey,
         rng: &mut R,
     ) -> Self {
         // The authorized message consists of (SenderAccId || RecipientAccId || Amount)
