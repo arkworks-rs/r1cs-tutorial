@@ -5,8 +5,8 @@ use ark_crypto_primitives::signature::{SignatureScheme, schnorr};
 use ark_crypto_primitives::crh::{TwoToOneCRH, CRH, pedersen, injective_map::{PedersenCRHCompressor, TECompressor}};
 use ark_crypto_primitives::merkle_tree::{self, MerkleTree};
 use ark_std::rand::Rng;
-use crate::data_structures::transaction::Transaction;
-use crate::data_structures::account::{AccountId, AccountInformation, AccountPublicKey, AccountSecretKey};
+use crate::transaction::Transaction;
+use crate::account::{AccountId, AccountInformation, AccountPublicKey, AccountSecretKey};
 
 
 /// Represents transaction amounts and account balances.
@@ -168,7 +168,7 @@ impl State {
 #[cfg(test)]
 mod test {
     use super::{Parameters, State, Amount, AccountId};
-    use crate::data_structures::transaction::Transaction;
+    use crate::transaction::Transaction;
 
     #[test]
     fn end_to_end() {

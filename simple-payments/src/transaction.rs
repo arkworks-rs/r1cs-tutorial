@@ -2,8 +2,8 @@ use ark_std::rand::Rng;
 use blake2::Blake2s;
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_crypto_primitives::signature::{SignatureScheme, schnorr::{self, Schnorr}};
-use crate::data_structures::ledger::{self, Amount};
-use crate::data_structures::account::{AccountPublicKey, AccountId, AccountSecretKey};
+use crate::ledger::{self, Amount};
+use crate::account::{AccountPublicKey, AccountId, AccountSecretKey};
 
 /// Transaction transferring some amount from one account to another.
 pub struct Transaction {
@@ -25,7 +25,7 @@ impl Transaction {
         pp: &schnorr::Parameters<EdwardsProjective, Blake2s>,
         pub_key: &AccountPublicKey
     ) -> bool {
-        // The authorized message consists of 
+        // The authorized message consists of
         // (SenderAccId || SenderPubKey || RecipientAccId || RecipientPubKey || Amount)
         let mut message = self.sender.to_bytes_le();
         message.extend(self.recipient.to_bytes_le());
@@ -37,7 +37,7 @@ impl Transaction {
     /// the following conditions:
     /// 1. Verify that the signature is valid with respect to the public key
     /// corresponding to `self.sender`.
-    /// 2. Verify that the sender's account has sufficient balance to finance 
+    /// 2. Verify that the sender's account has sufficient balance to finance
     /// the transaction.
     /// 3. Verify that the recipient's account exists.
     pub fn validate(
