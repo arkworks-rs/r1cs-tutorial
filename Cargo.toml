@@ -27,6 +27,7 @@ ark-serialize = { version = "^0.2.0", default-features = false }
 
 ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", branch = "main", default-features = true }
 blake2 = { version = "0.9" }
+digest = "0.9"
 
 [profile.release]
 opt-level = 3

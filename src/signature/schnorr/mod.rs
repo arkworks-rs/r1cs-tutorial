@@ -1,4 +1,6 @@
-use crate::{CryptoError, Error, SignatureScheme, Vec};
+use ark_crypto_primitives::{CryptoError, Error, SignatureScheme, Vec};
+use ark_crypto_primitives::{crh::pedersen::CRH};
+use ark_crypto_primitives::{commitment::pedersen::CRH};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{
     bytes::ToBytes,
