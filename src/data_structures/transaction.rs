@@ -1,7 +1,8 @@
+use ark_std::rand::Rng;
 use blake2::Blake2s;
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_crypto_primitives::signature::{SignatureScheme, schnorr::{self, Schnorr}};
-use crate::data_structures::ledger::{self, AccountPublicKey, AccountId, Amount};
+use crate::data_structures::ledger::{self, AccountPublicKey, AccountId, Amount, AccountSecretKey};
 
 /// Transaction transferring some amount from one account to another.
 pub struct Transaction {
@@ -31,7 +32,14 @@ impl Transaction {
         Schnorr::verify(&pp, &pub_key, &message, &self.signature).unwrap()
     }
 
-    pub fn verify_against_ledger_state(
+    /// Check that the transaction is valid for the given ledger state. This checks
+    /// the following conditions:
+    /// 1. Verify that the signature is valid with respect to the public key
+    /// corresponding to `self.sender`.
+    /// 2. Verify that the sender's account has sufficient balance to finance 
+    /// the transaction.
+    /// 3. Verify that the recipient's account exists.
+    pub fn validate(
         &self,
         parameters: &ledger::Parameters,
         state: &ledger::State
@@ -50,10 +58,32 @@ impl Transaction {
             false
         }
     }
+
+    /// Create a (possibly invalid) transaction.
+    pub fn create<R: Rng>(
+        parameters: &ledger::Parameters,
+        sender: AccountId,
+        recipient: AccountId,
+        amount: Amount,
+        sender_sk: AccountSecretKey,
+        rng: &mut R,
+    ) -> Self {
+        // The authorized message consists of (SenderAccId || RecipientAccId || Amount)
+        let mut message = sender.to_bytes_le();
+        message.extend(recipient.to_bytes_le());
+        message.extend(amount.to_bytes_le());
+        let signature = Schnorr::sign(&parameters.sig_params, &sender_sk, &message, rng).unwrap();
+        Self {
+            sender,
+            recipient,
+            amount,
+            signature,
+        }
+    }
 }
 
 
-// IDeas to make exercises more interesting/complex:
+// Ideas to make exercises more interesting/complex:
 // 1. Add fees
 // 2. Add recipient confirmation requirement if tx amount is too large.
 // 3. Add authority confirmation if tx amount is too large.

@@ -129,7 +129,7 @@ where
             }
         };
 
-        let verifier_challenge_fe = 
+        let verifier_challenge_fe =
             C::ScalarField::from_random_bytes(&verifier_challenge).unwrap();
 
         // k - xe;
