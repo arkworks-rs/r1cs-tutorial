@@ -7,13 +7,15 @@ This tutorial will introduce you to the [arkworks-rs](https://arkworks.rs) ecosy
 In order to best assist you during the tutorial (and share common development environment) you should have installed:
 
 + The Rust programming language;
-+ [Visual Studio Code](https://code.visualstudio.com/)
-+ [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer) extension for Visual Studio Code;
++ [Git](https://git-scm.com/downloads);
++ [Visual Studio Code](https://code.visualstudio.com/);
++ [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer), a Rust extension for Visual Studio Code;
 
 You can install Rust using [rustup](https://rustup.rs/) (and it doesn't require root!). To install Visual Studio Code and rust-analyzer, just head over to their respective page.
+Git will be needed solely to clone the repository and quickly get back to a consistent state if you messed things up :)
 
 ## Building and running
- To compile, clone this repository and `cd` into the folder. Then run:
+ To compile, clone this repository using `git` and `cd` into the folder. Then, run:
 
  ```rust
  cargo build
