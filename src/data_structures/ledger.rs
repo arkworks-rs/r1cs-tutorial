@@ -122,9 +122,7 @@ impl State {
         })
     }
 
-    /// Update the balance of `id` to `new_amount`.
-    /// Returns `Some(())` if an account with identifier `id` exists already, and `None`
-    /// otherwise.
+    /// Update the state by applying the transaction `tx`, if `tx` is valid.
     pub fn apply_transaction(&mut self, pp: &Parameters, tx: &Transaction) -> Option<()> {
         if tx.verify_against_ledger_state(pp, self) {
             let old_sender_bal = self.id_to_account_info.get(&tx.sender)?.balance;
