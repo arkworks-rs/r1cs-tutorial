@@ -9,8 +9,6 @@ use crate::data_structures::transaction::Transaction;
 use crate::data_structures::account::{AccountId, AccountInformation, AccountPublicKey, AccountSecretKey};
 
 
-
-
 /// Represents transaction amounts and account balances.
 #[derive(Hash, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
 pub struct Amount(u64);

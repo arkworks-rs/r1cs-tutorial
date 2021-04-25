@@ -1,48 +1,23 @@
-[package]
-name = "ark-r1cs-tutorial"
-version = "0.2.0"
-authors = [
-  "arkworks contributors"
+[workspace]
+
+members = [
+    "simple-payments",
+    "rollup",
 ]
-description = "A tutorial on writing R1CS constraints, for the ZKProof Workshop"
-repository = "https://github.com/arkworks-rs/r1cs-tutorial"
-keywords = ["cryptography", "relations", "r1cs"]
-categories = ["cryptography"]
-include = ["Cargo.toml", "src", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
-license = "MIT/Apache-2.0"
-edition = "2018"
-
-[dependencies]
-ark-ff = { version = "^0.2.0", default-features = false }
-ark-ec = { version = "^0.2.0", default-features = false }
-ark-ed-on-bls12-381 = { version = "^0.2.0", features = ["r1cs"] }
-ark-bls12-381 = { version = "^0.2.0", default-features = false }
-ark-std = { version = "^0.2.0", default-features = false }
-ark-relations = { version = "^0.2.0", default-features = false, optional = true }
-
-ark-r1cs-std = { version = "^0.2.0", optional = true, default-features = false }
-ark-snark = { version = "^0.2.0", default-features = false }
-
-ark-serialize = { version = "^0.2.0", default-features = false }
-
-ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", branch = "main", default-features = true }
-blake2 = { version = "0.9" }
-digest = "0.9"
 
 [profile.release]
 opt-level = 3
 lto = "thin"
 incremental = true
-debug = true
+panic = 'abort'
+
+[profile.dev]
+opt-level = 0
+panic = 'abort'
 
 [profile.test]
 opt-level = 3
-debug-assertions = true
+lto = "thin"
 incremental = true
+debug-assertions = true
 debug = true
-
-[features]
-default = [ "std", "parallel", "r1cs" ]
-std = [ "ark-ff/std", "ark-ec/std", "ark-std/std", "ark-relations/std", "ark-serialize/std", "ark-crypto-primitives/std" ]
-r1cs = [ "ark-relations", "ark-r1cs-std", "ark-crypto-primitives/r1cs" ]
-parallel = [ "std", "ark-ff/parallel", "ark-ec/parallel", "ark-std/parallel" ]
