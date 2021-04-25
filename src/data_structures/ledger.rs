@@ -13,22 +13,32 @@ pub type AccountPublicKey = schnorr::PublicKey<EdwardsProjective>;
 #[derive(Hash, Eq, PartialEq, Copy, Clone, Ord, PartialOrd)]
 pub struct AccountId(u8);
 
+impl AccountId {
+    pub fn to_bytes_le(&self) -> Vec<u8> {
+        vec![self.0]
+    }
+}
+
 /// Transaction amount.
-#[derive(Hash, Eq, PartialEq, Copy, Clone)]
+#[derive(Hash, Eq, PartialEq, Copy, Clone, PartialOrd, Ord)]
 pub struct Amount(u64);
 
+impl Amount {
+    pub fn to_bytes_le(&self) -> Vec<u8> {
+        self.0.to_le_bytes().to_vec()
+    }
+}
 
 #[derive(Hash, Eq, PartialEq, Copy, Clone)]
 pub struct AccountInformation {
-    public_key: AccountPublicKey,
-    balance: Amount
+    pub public_key: AccountPublicKey,
+    pub balance: Amount
 }
 
 impl AccountInformation {
-    fn to_bytes(&self) -> Vec<u8> {
-        ark_ff::to_bytes![self.public_key, self.balance.0].unwrap()
+    pub fn to_bytes_le(&self) -> Vec<u8> {
+        ark_ff::to_bytes![self.public_key, self.balance.to_bytes_le()].unwrap()
     }
-
 }
 
 pub struct Parameters {
@@ -86,7 +96,7 @@ impl State {
             balance: Amount(0),
         };
         self.pub_key_to_id.insert(public_key, id);
-        self.account_merkle_tree.update(id.0 as usize, &account_info.to_bytes()).expect("should exist");
+        self.account_merkle_tree.update(id.0 as usize, &account_info.to_bytes_le()).expect("should exist");
         self.id_to_account_info.insert(id, account_info);
     }
 
@@ -98,7 +108,7 @@ impl State {
         let tree = &mut self.account_merkle_tree;
         self.id_to_account_info.get_mut(&id).map(|account_info| {
             account_info.balance = new_amount;
-            tree.update(id.0 as usize, &account_info.to_bytes()).expect("should exist");
+            tree.update(id.0 as usize, &account_info.to_bytes_le()).expect("should exist");
         })
     }
 }
