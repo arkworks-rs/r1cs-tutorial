@@ -21,10 +21,16 @@ pub struct Rollup<const NUM_TX: usize> {
     pub transactions: Option<Vec<Transaction>>,
     /// The sender's account information and corresponding authentication path,
     /// *before* applying the transactions.
-    pub sender_pre_tx_info_and_path: Option<Vec<(AccountInformation, AccPath)>>,
-    /// The receiver's account information and corresponding authentication path,
+    pub sender_pre_tx_info_and_paths: Option<Vec<(AccountInformation, AccPath)>>,
+    /// The authentication path corresponding to the sender's account information
+    /// *after* applying the transactions.
+    pub sender_post_paths: Option<Vec<AccPath>>,
+    /// The recipient's account information and corresponding authentication path,
     /// *before* applying the transactions.
-    pub recv_pre_tx_info_and_path: Option<Vec<(AccountInformation, AccPath)>>,
+    pub recv_pre_tx_info_and_paths: Option<Vec<(AccountInformation, AccPath)>>,
+    /// The authentication path corresponding to the recipient's account information
+    /// *after* applying the transactions.
+    pub recv_post_paths: Option<Vec<AccPath>>,
     /// List of state roots, so that the i-th root is the state roots before applying
     /// the i-th transaction. This means that `pre_tx_roots[0] == initial_root`.
     pub pre_tx_roots: Option<Vec<AccRoot>>,
@@ -40,8 +46,10 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
             initial_root: None,
             final_root: None,
             transactions: None,
-            sender_pre_tx_info_and_path: None,
-            recv_pre_tx_info_and_path: None,
+            sender_pre_tx_info_and_paths: None,
+            sender_post_paths: None,
+            recv_pre_tx_info_and_paths: None,
+            recv_post_paths: None,
             pre_tx_roots: None,
             post_tx_roots: None,
         }
@@ -57,8 +65,10 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
             initial_root: Some(initial_root),
             final_root: Some(final_root),
             transactions: None,
-            sender_pre_tx_info_and_path: None,
-            recv_pre_tx_info_and_path: None,
+            sender_pre_tx_info_and_paths: None,
+            sender_post_paths: None,
+            recv_pre_tx_info_and_paths: None,
+            recv_post_paths: None,
             pre_tx_roots: None,
             post_tx_roots: None,
         }
@@ -68,13 +78,21 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
         ledger_params: Parameters,
         transactions: &[Transaction],
         state: &mut State,
+        validate_transactions: bool
     ) -> Option<Self> {
         assert_eq!(transactions.len(), NUM_TX);
         let initial_root = Some(state.root());
-        let mut sender_pre_tx_info_and_path = Vec::with_capacity(NUM_TX);
-        let mut recipient_pre_tx_info_and_path = Vec::with_capacity(NUM_TX);
+        let mut sender_pre_tx_info_and_paths = Vec::with_capacity(NUM_TX);
+        let mut recipient_pre_tx_info_and_paths = Vec::with_capacity(NUM_TX);
+        let mut sender_post_paths = Vec::with_capacity(NUM_TX);
+        let mut recipient_post_paths = Vec::with_capacity(NUM_TX);
         let mut pre_tx_roots = Vec::with_capacity(NUM_TX);
         let mut post_tx_roots = Vec::with_capacity(NUM_TX);
+        for tx in transactions {
+            if !tx.validate(&ledger_params, &*state) && validate_transactions {
+                return None
+            }
+        }
         for tx in transactions {
             let sender_id = tx.sender;
             let recipient_id = tx.recipient;
@@ -90,11 +108,24 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
                 .generate_proof(recipient_id.0 as usize)
                 .unwrap();
 
-            state.apply_transaction(&ledger_params, tx)?;
+            if validate_transactions {
+                state.apply_transaction(&ledger_params, tx)?;
+            } else {
+                let _ = state.apply_transaction(&ledger_params, tx);
+            }
             let post_tx_root = state.root();
-
-            sender_pre_tx_info_and_path.push((sender_pre_acc_info, sender_pre_path));
-            recipient_pre_tx_info_and_path.push((recipient_pre_acc_info, recipient_pre_path));
+            let sender_post_path = state
+                .account_merkle_tree
+                .generate_proof(sender_id.0 as usize)
+                .unwrap();
+            let recipient_post_path = state
+                .account_merkle_tree
+                .generate_proof(recipient_id.0 as usize)
+                .unwrap();
+            sender_pre_tx_info_and_paths.push((sender_pre_acc_info, sender_pre_path));
+            recipient_pre_tx_info_and_paths.push((recipient_pre_acc_info, recipient_pre_path));
+            sender_post_paths.push(sender_post_path);
+            recipient_post_paths.push(recipient_post_path);
             pre_tx_roots.push(pre_tx_root);
             post_tx_roots.push(post_tx_root);
         }
@@ -104,8 +135,10 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
             initial_root,
             final_root: Some(state.root()),
             transactions: Some(transactions.to_vec()),
-            sender_pre_tx_info_and_path: Some(sender_pre_tx_info_and_path),
-            recv_pre_tx_info_and_path: Some(recipient_pre_tx_info_and_path),
+            sender_pre_tx_info_and_paths: Some(sender_pre_tx_info_and_paths),
+            recv_pre_tx_info_and_paths: Some(recipient_pre_tx_info_and_paths),
+            sender_post_paths: Some(sender_post_paths),
+            recv_post_paths: Some(recipient_post_paths),
             pre_tx_roots: Some(pre_tx_roots),
             post_tx_roots: Some(post_tx_roots),
         })
@@ -113,6 +146,7 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
 }
 
 impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> {
+    #[tracing::instrument(target = "r1cs", skip(self, cs))]
     fn generate_constraints(
         self,
         cs: ConstraintSystemRef<ConstraintF>,
@@ -135,10 +169,16 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
 
         for i in 0..NUM_TX {
             let tx = self.transactions.as_ref().and_then(|t| t.get(i));
-            let sender_acc_info = self.sender_pre_tx_info_and_path.as_ref().map(|t| t[i].0);
-            let sender_path = self.sender_pre_tx_info_and_path.as_ref().map(|t| &t[i].1);
-            let recipient_acc_info = self.recv_pre_tx_info_and_path.as_ref().map(|t| t[i].0);
-            let recipient_path = self.recv_pre_tx_info_and_path.as_ref().map(|t| &t[i].1);
+
+            let sender_acc_info = self.sender_pre_tx_info_and_paths.as_ref().map(|t| t[i].0);
+            let sender_pre_path = self.sender_pre_tx_info_and_paths.as_ref().map(|t| &t[i].1);
+
+            let recipient_acc_info = self.recv_pre_tx_info_and_paths.as_ref().map(|t| t[i].0);
+            let recipient_pre_path = self.recv_pre_tx_info_and_paths.as_ref().map(|t| &t[i].1);
+
+            let sender_post_path = self.sender_post_paths.as_ref().map(|t| &t[i]);
+            let recipient_post_path = self.recv_post_paths.as_ref().map(|t| &t[i]);
+
             let pre_tx_root = self.pre_tx_roots.as_ref().map(|t| t[i]);
             let post_tx_root = self.post_tx_roots.as_ref().map(|t| t[i]);
 
@@ -152,20 +192,31 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                 ark_relations::ns!(cs, "Sender Account Info"),
                 || sender_acc_info.ok_or(SynthesisError::AssignmentMissing),
             )?;
-            // ... and corresponding authentication path.
-            let sender_path =
-                AccPathVar::new_witness(ark_relations::ns!(cs, "Sender Path"), || {
-                    sender_path.ok_or(SynthesisError::AssignmentMissing)
+            // ..., corresponding authentication path, ...
+            let sender_pre_path =
+                AccPathVar::new_witness(ark_relations::ns!(cs, "Sender Pre-Path"), || {
+                    sender_pre_path.ok_or(SynthesisError::AssignmentMissing)
+                })?;
+            // ... and authentication path after the update.
+            let sender_post_path =
+                AccPathVar::new_witness(ark_relations::ns!(cs, "Sender Post-Path"), || {
+                    sender_post_path.ok_or(SynthesisError::AssignmentMissing)
                 })?;
             // Declare the recipient's initial account balance...
             let recipient_acc_info = AccountInformationVar::new_witness(
                 ark_relations::ns!(cs, "Recipient Account Info"),
                 || recipient_acc_info.ok_or(SynthesisError::AssignmentMissing),
             )?;
-            // ... and corresponding authentication path.
-            let recipient_path =
-                AccPathVar::new_witness(ark_relations::ns!(cs, "Recipient Path"), || {
-                    recipient_path.ok_or(SynthesisError::AssignmentMissing)
+            // ..., corresponding authentication path, ...
+            let recipient_pre_path =
+                AccPathVar::new_witness(ark_relations::ns!(cs, "Recipient Pre-Path"), || {
+                    recipient_pre_path.ok_or(SynthesisError::AssignmentMissing)
+                })?;
+
+            // ... and authentication path after the update.
+            let recipient_post_path =
+                AccPathVar::new_witness(ark_relations::ns!(cs, "Recipient Post-Path"), || {
+                    recipient_post_path.ok_or(SynthesisError::AssignmentMissing)
                 })?;
             // Declare the state root before the transaction...
             let pre_tx_root =
@@ -177,6 +228,7 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                 AccRootVar::new_witness(ark_relations::ns!(cs, "Post-tx Root"), || {
                     post_tx_root.ok_or(SynthesisError::AssignmentMissing)
                 })?;
+
             // Enforce that the state root after the previous transaction equals
             // the starting state root for this transaction
             prev_root.enforce_equal(&pre_tx_root)?;
@@ -185,9 +237,11 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
             tx.validate(
                 &ledger_params,
                 &sender_acc_info,
-                &sender_path,
+                &sender_pre_path,
+                &sender_post_path,
                 &recipient_acc_info,
-                &recipient_path,
+                &recipient_pre_path,
+                &recipient_post_path,
                 &pre_tx_root,
                 &post_tx_root,
             )?
@@ -205,16 +259,25 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
 
 #[cfg(test)]
 mod test {
+    use tracing_subscriber::layer::SubscriberExt;
     use ark_simple_payments::ledger::{Amount, Parameters, State};
     use ark_simple_payments::account::AccountId;
     use ark_simple_payments::transaction::Transaction;
     use super::*;
-    use ark_relations::r1cs::{ConstraintSystem, ConstraintSynthesizer};
+    use ark_relations::r1cs::{ConstraintLayer, ConstraintSystem, ConstraintSynthesizer, TracingMode::OnlyConstraints};
 
     fn test_cs<const NUM_TX: usize>(rollup: Rollup<NUM_TX>) -> bool {
+        let mut layer = ConstraintLayer::default();
+        layer.mode = OnlyConstraints;
+        let subscriber = tracing_subscriber::Registry::default().with(layer);
+        let _guard = tracing::subscriber::set_default(subscriber);
         let cs = ConstraintSystem::new_ref();
         rollup.generate_constraints(cs.clone()).unwrap();
-        cs.is_satisfied().unwrap()
+        let result = cs.is_satisfied().unwrap();
+        if !result {
+            println!("{:?}", cs.which_is_unsatisfied());
+        }
+        result
     }
 
     #[test]
@@ -227,32 +290,46 @@ mod test {
             state.sample_keys_and_register(&pp, &mut rng).unwrap();
         // Let's give her some initial balance to start with.
         state
-            .update_balance(alice_id, Amount(10))
+            .update_balance(alice_id, Amount(20))
             .expect("Alice's account should exist");
         // Let's make an account for Bob.
         let (bob_id, _bob_pk, bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
 
         // Alice wants to transfer 5 units to Bob.
+        let mut temp_state = state.clone();
         let tx1 = Transaction::create(&pp, alice_id, bob_id, Amount(5), &alice_sk, &mut rng);
-        assert!(tx1.validate(&pp, &state));
-        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[tx1.clone()], &mut state).unwrap();
+        assert!(tx1.validate(&pp, &temp_state));
+        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[tx1.clone()], &mut temp_state, true).unwrap();
         assert!(test_cs(rollup));
+
+        let mut temp_state = state.clone();
+        let rollup = Rollup::<2>::with_state_and_transactions(pp.clone(), &[tx1.clone(), tx1.clone()], &mut temp_state, true).unwrap();
+        assert!(test_cs(rollup));
+        assert_eq!(temp_state.id_to_account_info.get(&alice_id).unwrap().balance, Amount(10));
+        assert_eq!(temp_state.id_to_account_info.get(&bob_id).unwrap().balance, Amount(10));
 
         // Let's try creating invalid transactions:
         // First, let's try a transaction where the amount is larger than Alice's balance.
-        let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(6), &alice_sk, &mut rng);
-        assert!(!bad_tx.validate(&pp, &state));
-        assert!(matches!(state.apply_transaction(&pp, &bad_tx), None));
+        let mut temp_state = state.clone();
+        let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(21), &alice_sk, &mut rng);
+        assert!(!bad_tx.validate(&pp, &temp_state));
+        assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
+        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[bad_tx.clone()], &mut temp_state, false).unwrap();
+        assert!(!test_cs(rollup));
+
         // Next, let's try a transaction where the signature is incorrect:
+        let mut temp_state = state.clone();
         let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(5), &bob_sk, &mut rng);
-        assert!(!bad_tx.validate(&pp, &state));
-        assert!(matches!(state.apply_transaction(&pp, &bad_tx), None));
+        assert!(!bad_tx.validate(&pp, &temp_state));
+        assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
+        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[bad_tx.clone()], &mut temp_state, false).unwrap();
+        assert!(!test_cs(rollup));
 
         // Finally, let's try a transaction to an non-existant account:
         let bad_tx =
             Transaction::create(&pp, alice_id, AccountId(10), Amount(5), &alice_sk, &mut rng);
         assert!(!bad_tx.validate(&pp, &state));
-        assert!(matches!(state.apply_transaction(&pp, &bad_tx), None));
+        assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
     }
 }
 // Optimization ideas: remove `pre_tx_roots` entirely.

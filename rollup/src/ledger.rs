@@ -17,13 +17,15 @@ use std::borrow::Borrow;
 
 /// Represents transaction amounts and account balances.
 #[derive(Clone, Debug)]
-pub struct AmountVar(UInt64<ConstraintF>);
+pub struct AmountVar(pub UInt64<ConstraintF>);
 
 impl AmountVar {
+    #[tracing::instrument(target = "r1cs", skip(self))]
     pub fn to_bytes_le(&self) -> Vec<UInt8<ConstraintF>> {
         self.0.to_bytes().unwrap()
     }
 
+    #[tracing::instrument(target = "r1cs", skip(self, other))]
     pub fn checked_add(&self, other: &Self) -> Result<Self, SynthesisError> {
         // To do a checked add, we add two uint64's directly.
         // We also check for overflow, by casting them to field elements,
@@ -45,6 +47,7 @@ impl AmountVar {
         Ok(AmountVar(result))
     }
 
+    #[tracing::instrument(target = "r1cs", skip(self, other))]
     pub fn checked_sub(&self, other: &Self) -> Result<Self, SynthesisError> {
         // To do a checked sub, we convert the uints to a field element.
         // We do the sub on the field element.
@@ -60,12 +63,13 @@ impl AmountVar {
         // Ensure top bit is 0
         res_bz[res_bz.len() - 1].enforce_equal(&UInt8::<ConstraintF>::constant(0))?;
         // Convert to UInt64
-        let res = UInt64::from_bits_le(&res_fe.to_bits_le()?);
+        let res = UInt64::from_bits_le(&res_fe.to_bits_le()?[..64]);
         Ok(AmountVar(res))
     }
 }
 
 impl AllocVar<Amount, ConstraintF> for AmountVar {
+    #[tracing::instrument(target = "r1cs", skip(cs, f, mode))]
     fn new_variable<T: Borrow<Amount>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
@@ -106,10 +110,11 @@ pub struct ParametersVar {
 }
 
 impl AllocVar<Parameters, ConstraintF> for ParametersVar {
+    #[tracing::instrument(target = "r1cs", skip(cs, f, _mode))]
     fn new_variable<T: Borrow<Parameters>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
-        _: AllocationMode,
+        _mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         let cs = cs.into();
         f().and_then(|params| {

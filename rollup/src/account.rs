@@ -17,12 +17,14 @@ pub struct AccountIdVar(pub UInt8<ConstraintF>);
 
 impl AccountIdVar {
     /// Convert the account identifier to bytes.
+    #[tracing::instrument(target = "r1cs", skip(self))]
     pub fn to_bytes_le(&self) -> Vec<UInt8<ConstraintF>> {
         vec![self.0.clone()]
     }
 }
 
 impl AllocVar<AccountId, ConstraintF> for AccountIdVar {
+    #[tracing::instrument(target = "r1cs", skip(cs, f, mode))]
     fn new_variable<T: Borrow<AccountId>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
@@ -43,6 +45,7 @@ pub struct AccountInformationVar {
 
 impl AccountInformationVar {
     /// Convert the account information to bytes.
+    #[tracing::instrument(target = "r1cs", skip(self))]
     pub fn to_bytes_le(&self) -> Vec<UInt8<crate::ConstraintF>> {
         self.public_key
             .to_bytes()
@@ -54,6 +57,7 @@ impl AccountInformationVar {
 }
 
 impl AllocVar<AccountInformation, ConstraintF> for AccountInformationVar {
+    #[tracing::instrument(target = "r1cs", skip(cs, f, mode))]
     fn new_variable<T: Borrow<AccountInformation>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,

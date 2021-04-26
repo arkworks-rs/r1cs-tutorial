@@ -27,6 +27,8 @@ ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitive
 ark-simple-payments = { path = "../simple-payments", default-features = true }
 blake2 = { version = "0.9" }
 digest = "0.9"
+tracing = { version = "0.1", default-features = false, features = [ "attributes" ] }
+tracing-subscriber = { version = "0.2" }
 
 [features]
 default = [ "std", "parallel", "r1cs" ]

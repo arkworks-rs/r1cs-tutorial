@@ -71,6 +71,7 @@ impl pedersen::Window for LeafWindow {
     const NUM_WINDOWS: usize = 4;
 }
 
+#[derive(Clone)]
 pub struct MerkleConfig;
 impl merkle_tree::Config for MerkleConfig {
     type LeafHash = LeafHash;
@@ -84,6 +85,7 @@ pub type AccRoot = <TwoToOneHash as TwoToOneCRH>::Output;
 /// A membership proof for a given account.
 pub type AccPath = Path<MerkleConfig>;
 
+#[derive(Clone)]
 pub struct State {
     /// What is the next available account identifier?
     pub next_available_account: Option<AccountId>,

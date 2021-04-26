@@ -4,8 +4,8 @@ use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective};
 use ark_simple_payments::signature::schnorr::constraints::{SignatureVar, ParametersVar as SchnorrParamsVar, SchnorrSignatureVerifyGadget};
 use ark_simple_payments::signature::SigVerifyGadget;
 use ark_simple_payments::transaction::Transaction;
-use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_r1cs_std::prelude::*;
 use std::borrow::Borrow;
 use crate::ConstraintF;
 
@@ -24,6 +24,7 @@ pub struct TransactionVar {
 
 impl TransactionVar {
     /// Verify just the signature in the transaction.
+    #[tracing::instrument(target = "r1cs", skip(self, pp, pub_key))]
     fn verify_signature(
         &self,
         pp: &SchnorrParamsVar<EdwardsProjective, EdwardsVar>,
@@ -44,13 +45,16 @@ impl TransactionVar {
     /// 2. Verify that the sender's account has sufficient balance to finance
     /// the transaction.
     /// 3. Verify that the recipient's account exists.
+    #[tracing::instrument(target = "r1cs", skip(self, parameters, pre_sender_acc_info, pre_sender_path, post_sender_path, pre_recipient_acc_info, pre_recipient_path, post_recipient_path, pre_root, post_root))]
     pub fn validate(
         &self,
         parameters: &ledger::ParametersVar,
         pre_sender_acc_info: &AccountInformationVar,
         pre_sender_path: &AccPathVar,
+        post_sender_path: &AccPathVar,
         pre_recipient_acc_info: &AccountInformationVar,
         pre_recipient_path: &AccPathVar,
+        post_recipient_path: &AccPathVar,
         pre_root: &AccRootVar,
         post_root: &AccRootVar,
     ) -> Result<Boolean<ConstraintF>, SynthesisError> {
@@ -60,42 +64,55 @@ impl TransactionVar {
 
         // Compute the new sender balance.
         let mut post_sender_acc_info = pre_sender_acc_info.clone();
-        post_sender_acc_info.balance = pre_sender_acc_info.balance.checked_sub(&self.amount)?;
+        post_sender_acc_info.balance = post_sender_acc_info.balance.checked_sub(&self.amount)?;
         // Compute the new receiver balance.
         let mut post_recipient_acc_info = pre_recipient_acc_info.clone();
-        post_recipient_acc_info.balance = pre_recipient_acc_info.balance.checked_add(&self.amount)?;
+        post_recipient_acc_info.balance = post_recipient_acc_info.balance.checked_add(&self.amount)?;
 
         // Check that the pre-tx sender account information is correct with
         // respect to `pre_tx_root`, and that the post-tx sender account
         // information is correct with respect to `post_tx_root`.
-        let sender_exists_and_updated_correctly = pre_sender_path.update_and_check(
+        let sender_exists = pre_sender_path.verify_membership(
             &parameters.leaf_crh_params,
             &parameters.two_to_one_crh_params,
             &pre_root,
-            &post_root,
             &pre_sender_acc_info.to_bytes_le().as_slice(),
+        )?;
+
+        let sender_updated_correctly = post_sender_path.verify_membership(
+            &parameters.leaf_crh_params,
+            &parameters.two_to_one_crh_params,
+            &post_root,
             &post_sender_acc_info.to_bytes_le().as_slice(),
         )?;
 
         // Check that the pre-tx recipient account information is correct with
         // respect to `pre_tx_root`, and that the post-tx recipient account
         // information is correct with respect to `post_tx_root`.
-        let recipient_exists_and_updated_correctly = pre_recipient_path.update_and_check(
+        let recipient_exists = pre_recipient_path.verify_membership(
             &parameters.leaf_crh_params,
             &parameters.two_to_one_crh_params,
             &pre_root,
-            &post_root,
             &pre_recipient_acc_info.to_bytes_le().as_slice(),
+        )?;
+
+        let recipient_updated_correctly = post_recipient_path.verify_membership(
+            &parameters.leaf_crh_params,
+            &parameters.two_to_one_crh_params,
+            &post_root,
             &post_recipient_acc_info.to_bytes_le().as_slice(),
         )?;
 
-        sender_exists_and_updated_correctly
-            .and(&recipient_exists_and_updated_correctly)?
+        sender_exists
+            .and(&sender_updated_correctly)?
+            .and(&recipient_exists)?
+            .and(&recipient_updated_correctly)?
             .and(&sig_verifies)
     }
 }
 
 impl AllocVar<Transaction, ConstraintF> for TransactionVar {
+    #[tracing::instrument(target = "r1cs", skip(cs, f, mode))]
     fn new_variable<T: Borrow<Transaction>>(
         cs: impl Into<Namespace<ConstraintF>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
