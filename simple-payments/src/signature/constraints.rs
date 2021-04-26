@@ -38,15 +38,13 @@ pub trait SigRandomizePkGadget<S: SignatureScheme, ConstraintF: Field> {
 #[cfg(test)]
 mod test {
     use crate::signature::{schnorr, schnorr::constraints::*, *};
-    use ark_ec::group::Group;
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::constraints::EdwardsVar as JubJubVar;
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_ff::{to_bytes, PrimeField};
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
-    use ark_std::{test_rng, UniformRand};
-    use blake2::Blake2s;
+    use ark_std::test_rng;
 
     fn sign_and_verify<F: PrimeField, S: SignatureScheme, SG: SigVerifyGadget<S, F>>(
         message: &[u8],

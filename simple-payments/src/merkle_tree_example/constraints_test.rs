@@ -1,4 +1,4 @@
-use crate::merkle_tree_example::MerkleTreeVerification;
+use crate::merkle_tree_example::constraints::MerkleTreeVerification;
 use ark_crypto_primitives::crh::{pedersen, TwoToOneCRHGadget};
 use ark_crypto_primitives::merkle_tree::Config;
 use ark_crypto_primitives::{CRHGadget, MerkleTree, CRH};
