@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "merkle_tree_example",
     "simple-payments",
     "rollup",
 ]

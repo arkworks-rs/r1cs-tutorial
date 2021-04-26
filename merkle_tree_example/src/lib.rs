@@ -1,7 +1,5 @@
 use ark_crypto_primitives::merkle_tree::{Config, Path, TwoToOneDigest};
 use ark_crypto_primitives::crh::{CRH, TwoToOneCRH};
-use ark_ff::prelude::*;
-use ark_std::marker::PhantomData;
 
 #[cfg(feature = "r1cs")]
 mod constraints;
