@@ -222,8 +222,10 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                     pre_tx_root.ok_or(SynthesisError::AssignmentMissing)
                 })?;
             // ... and after the transaction.
-            // TODO: Fill in the following
-            // let post_tx_root = ???
+            let post_tx_root =
+                AccRootVar::new_witness(ark_relations::ns!(cs, "Post-tx Root"), || {
+                    post_tx_root.ok_or(SynthesisError::AssignmentMissing)
+                })?;
 
             // Enforce that the state root after the previous transaction equals
             // the starting state root for this transaction
@@ -290,7 +292,7 @@ mod test {
             .update_balance(alice_id, Amount(20))
             .expect("Alice's account should exist");
         // Let's make an account for Bob.
-        let (bob_id, _bob_pk, _bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
+        let (bob_id, _bob_pk, bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
 
         // Alice wants to transfer 5 units to Bob.
         let mut temp_state = state.clone();
@@ -299,9 +301,11 @@ mod test {
         let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[tx1.clone()], &mut temp_state, true).unwrap();
         assert!(test_cs(rollup));
 
-        let bad_tx =
-            Transaction::create(&pp, alice_id, AccountId(10), Amount(5), &alice_sk, &mut rng);
-        assert!(!bad_tx.validate(&pp, &state));
+        let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(5), &bob_sk, &mut rng);
+        assert!(!bad_tx.validate(&pp, &temp_state));
+        assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
+        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[bad_tx.clone()], &mut temp_state, false).unwrap();
+        assert!(!test_cs(rollup));
     }
 
     #[test]
