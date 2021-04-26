@@ -66,8 +66,8 @@ mod test {
     #[test]
     fn schnorr_signature_test() {
         let message = "Hi, I am a Schnorr signature!";
-        sign_and_verify::<schnorr::Schnorr<JubJub, Blake2s>>(message.as_bytes());
-        failed_verification::<schnorr::Schnorr<JubJub, Blake2s>>(
+        sign_and_verify::<schnorr::Schnorr<JubJub>>(message.as_bytes());
+        failed_verification::<schnorr::Schnorr<JubJub>>(
             message.as_bytes(),
             "Bad message".as_bytes(),
         );
