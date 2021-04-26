@@ -25,8 +25,6 @@ Because the `arkworks` ecosystem uses the Rust programming language, this tutori
 
 In this tutorial, we will construct a SNARK-based rollup for a simple payments system. In the course of doing so, you will learn how to use `arkworks` libraries for writing circuits, how to debug these circuits for both correctness and performance, and finally how to plug these circuits into zkSNARKs.
 
-First, checkout the `code_erased` branch in the repository. This is what you'll use to complete your exercises.
-
 ### Exercise 1: Merkle Tree Example
 Open [`merkle_tree_example/README.md`](merkle_tree_example/README.md).
 
