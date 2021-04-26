@@ -106,6 +106,7 @@ where
         if parameters.salt.is_some() {
             hash_input.extend_from_slice(parameters.salt.as_ref().unwrap());
         }
+        hash_input.extend_from_slice(&public_key.pub_key.to_bytes()?);
         hash_input.extend_from_slice(&claimed_prover_commitment.to_bytes()?);
         hash_input.extend_from_slice(message);
 
@@ -122,7 +123,7 @@ where
         )
         .unwrap().0;
         
-        Ok(obtained_verifier_challenge.is_eq(&verifier_challenge.to_vec())?)
+        obtained_verifier_challenge.is_eq(&verifier_challenge.to_vec())
     }
 }
 
@@ -137,32 +138,34 @@ where
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
-        let cs = cs.into();
-        let generator = GC::new_variable(cs.clone(), || f().map(|g| g.borrow().generator), mode)?;
-        let native_salt = f().map(|b| b.borrow().salt)?;
-        let mut constraint_salt = Vec::<UInt8::<ConstraintF<C>>>::new();
-        if native_salt.is_some() {
-            for i in 0..32 {
-                constraint_salt.push( 
-                    UInt8::<ConstraintF<C>>::new_variable(
-                        cs.clone(),
-                        || Ok(native_salt.unwrap()[i].clone()),
-                        mode,
-                    )?);
-            }
+        f().and_then(|val| {
+            let cs = cs.into();
+            let generator = GC::new_variable(cs.clone(), || Ok(val.borrow().generator), mode)?;
+            let native_salt = val.borrow().salt;
+            let mut constraint_salt = Vec::<UInt8::<ConstraintF<C>>>::new();
+            if native_salt.is_some() {
+                for i in 0..32 {
+                    constraint_salt.push( 
+                        UInt8::<ConstraintF<C>>::new_variable(
+                            cs.clone(),
+                            || Ok(native_salt.unwrap()[i].clone()),
+                            mode,
+                        )?);
+                }
 
-            return Ok(Self {
+                return Ok(Self {
+                    generator,
+                    salt: Some(constraint_salt),
+                    _curve: PhantomData,
+                });
+            }
+            Ok(Self {
                 generator,
-                salt: Some(constraint_salt),
+                salt: None,
                 _curve: PhantomData,
-            });
-        }
-        Ok(Self {
-            generator,
-            salt: None,
-            _curve: PhantomData,
-        })
-    }
+            })
+    })
+}
 }
 
 impl<C, GC> AllocVar<PublicKey<C>, ConstraintF<C>> for PublicKeyVar<C, GC>
