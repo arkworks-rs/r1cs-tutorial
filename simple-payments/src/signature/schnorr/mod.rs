@@ -34,12 +34,15 @@ pub struct Parameters<C: ProjectiveCurve, H: Digest> {
 pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
 
 #[derive(Clone, Default, Debug)]
-pub struct SecretKey<C: ProjectiveCurve>(pub C::ScalarField);
+pub struct SecretKey<C: ProjectiveCurve> {
+    pub secret_key: C::ScalarField,
+    pub public_key: PublicKey<C>,
+}
 
 impl<C: ProjectiveCurve> ToBytes for SecretKey<C> {
     #[inline]
     fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.0.write(writer)
+        self.secret_key.write(writer)
     }
 }
 
@@ -87,7 +90,7 @@ where
         let public_key = parameters.generator.mul(secret_key).into();
 
         // end_timer!(keygen_time);
-        Ok((public_key, SecretKey(secret_key)))
+        Ok((public_key, SecretKey{secret_key, public_key}))
     }
 
     fn sign<R: Rng>(
@@ -106,11 +109,12 @@ where
             let prover_commitment = parameters.generator.mul(random_scalar).into_affine();
 
             // Hash everything to get verifier challenge.
-            // e := H(salt || r || msg);
+            // e := H(salt || pubkey || r || msg);
             let mut hash_input = Vec::new();
             if parameters.salt != None {
                 hash_input.extend_from_slice(&parameters.salt.unwrap());
             }
+            hash_input.extend_from_slice(&to_bytes![sk.public_key]?);
             hash_input.extend_from_slice(&to_bytes![prover_commitment]?);
             hash_input.extend_from_slice(message);
 
@@ -135,7 +139,7 @@ where
             C::ScalarField::from_random_bytes(&verifier_challenge).unwrap();
 
         // k - xe;
-        let prover_response = random_scalar - (verifier_challenge_fe * sk.0);
+        let prover_response = random_scalar - (verifier_challenge_fe * sk.secret_key);
         let signature = Signature {
             prover_response,
             verifier_challenge,
@@ -175,6 +179,7 @@ where
         if parameters.salt != None {
             hash_input.extend_from_slice(&parameters.salt.unwrap());
         }
+        hash_input.extend_from_slice(&to_bytes![pk]?);
         hash_input.extend_from_slice(&to_bytes![claimed_prover_commitment]?);
         hash_input.extend_from_slice(&message);
 
