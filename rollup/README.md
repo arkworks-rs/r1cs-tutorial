@@ -24,6 +24,7 @@ If the foregoing checks pass, the transaction can be applied by updating the res
 ## Batch verification
 
 SNARK proofs of validity of a batch of transactions are one way to increase the throughput of blockchains while also reducing the size of the blockchain. At a high level, the circuit for batch verification works as follows:
+
 * Public input: initial (pre-transaction application) and final (post-tx application) state roots
 * Private inputs: transactions
 * For each transaction:
