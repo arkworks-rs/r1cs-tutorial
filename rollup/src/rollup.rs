@@ -281,6 +281,29 @@ mod test {
     }
 
     #[test]
+    fn single_tx_test() {
+        let mut rng = ark_std::test_rng();
+        let pp = Parameters::sample(&mut rng);
+        let mut state = State::new(32, &pp);
+        // Let's make an account for Alice.
+        let (alice_id, _alice_pk, alice_sk) =
+            state.sample_keys_and_register(&pp, &mut rng).unwrap();
+        // Let's give her some initial balance to start with.
+        state
+            .update_balance(alice_id, Amount(20))
+            .expect("Alice's account should exist");
+        // Let's make an account for Bob.
+        let (bob_id, _bob_pk, _bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
+
+        // Alice wants to transfer 5 units to Bob.
+        let mut temp_state = state.clone();
+        let tx1 = Transaction::create(&pp, alice_id, bob_id, Amount(5), &alice_sk, &mut rng);
+        assert!(tx1.validate(&pp, &temp_state));
+        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[tx1.clone()], &mut temp_state, true).unwrap();
+        assert!(test_cs(rollup));
+    }
+
+    #[test]
     fn end_to_end() {
         let mut rng = ark_std::test_rng();
         let pp = Parameters::sample(&mut rng);
