@@ -44,10 +44,22 @@ where
     _group: PhantomData<*const C>,
 }
 
-pub struct SignatureVar<ConstraintF: PrimeField>
+
+#[derive(Derivative)]
+#[derivative(
+    Debug(bound = "C: ProjectiveCurve, GC: CurveVar<C, ConstraintF<C>>"),
+    Clone(bound = "C: ProjectiveCurve, GC: CurveVar<C, ConstraintF<C>>")
+)]
+pub struct SignatureVar<
+    C: ProjectiveCurve, 
+    GC: CurveVar<C, ConstraintF<C>>>
+where
+    for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
-    prover_response: Vec<UInt8<ConstraintF>>,
-    verifier_challenge: [UInt8<ConstraintF>; 32],
+    prover_response: Vec<UInt8<ConstraintF<C>>>,
+    verifier_challenge: [UInt8<ConstraintF<C>>; 32],
+    #[doc(hidden)]
+    _group: PhantomData<GC>,
 }
 
 pub struct SchnorrSignatureVerifyGadget<
@@ -71,7 +83,7 @@ where
 {
     type ParametersVar = ParametersVar<C, GC>;
     type PublicKeyVar = PublicKeyVar<C, GC>;
-    type SignatureVar = SignatureVar<ConstraintF<C>>;
+    type SignatureVar = SignatureVar<C, GC>;
 
 
     fn verify(
@@ -170,23 +182,25 @@ where
     }
 }
 
-impl<ConstraintF: PrimeField> AllocVar<Signature<ConstraintF>, ConstraintF> for SignatureVar<ConstraintF>
+impl<C, GC> AllocVar<Signature<C>, ConstraintF<C>> for SignatureVar<C, GC>
 where
-    ConstraintF: ProjectiveCurve,
+    C: ProjectiveCurve,
+    GC: CurveVar<C, ConstraintF<C>>,
+    for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
-    fn new_variable<T: Borrow<Signature<ConstraintF>>>(
-        cs: impl Into<Namespace<ConstraintF>>,
+    fn new_variable<T: Borrow<Signature<C>>>(
+        cs: impl Into<Namespace<ConstraintF<C>>>,
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         f().and_then(|val| {
             let response_bytes = to_bytes![val.borrow().prover_response].unwrap();
             let challenge_bytes = val.borrow().verifier_challenge;
-            let mut prover_response = Vec::<UInt8::<ConstraintF>>::new();
-            let mut verifier_challenge = [UInt8::<ConstraintF>::constant(0); 32];
+            let mut prover_response = Vec::<UInt8::<ConstraintF<C>>>::new();
+            let mut verifier_challenge = [UInt8::<ConstraintF<C>>::constant(0); 32];
             for i in 0..response_bytes.len() {
                 prover_response.push(
-                    UInt8::<ConstraintF>::new_variable(
+                    UInt8::<ConstraintF<C>>::new_variable(
                         ark_relations::ns!(cs, "prover_response"),
                         || Ok(response_bytes[i].clone()),
                         mode,
@@ -194,7 +208,7 @@ where
             }
             for i in 0..32 {
                 verifier_challenge[i] = 
-                    UInt8::<ConstraintF>::new_variable(
+                    UInt8::<ConstraintF<C>>::new_variable(
                         ark_relations::ns!(cs, "verifier_challenge"),
                         || Ok(challenge_bytes[i].clone()),
                         mode,
@@ -203,6 +217,7 @@ where
             Ok(SignatureVar {
                 prover_response,
                 verifier_challenge,
+                _group: PhantomData,
             })
         })
     }

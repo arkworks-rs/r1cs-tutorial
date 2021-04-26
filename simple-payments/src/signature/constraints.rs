@@ -9,7 +9,7 @@ pub trait SigVerifyGadget<S: SignatureScheme, ConstraintF: Field> {
 
     type PublicKeyVar: ToBytesGadget<ConstraintF> + AllocVar<S::PublicKey, ConstraintF> + Clone;
 
-    type SignatureVar: ToBytesGadget<ConstraintF> + AllocVar<S::Signature, ConstraintF> + Clone;
+    type SignatureVar: AllocVar<S::Signature, ConstraintF> + Clone;
 
     fn verify(
         parameters: &Self::ParametersVar,
