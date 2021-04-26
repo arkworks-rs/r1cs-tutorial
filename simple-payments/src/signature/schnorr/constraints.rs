@@ -88,7 +88,7 @@ where
         let public_key_times_verifier_challenge = public_key.pub_key.scalar_mul_le(
             verifier_challenge.to_bits_le()?.iter())?;
         claimed_prover_commitment += &public_key_times_verifier_challenge;
-        let claimed_prover_commitment = claimed_prover_commitment.into_affine();
+        let claimed_prover_commitment = claimed_prover_commitment;
 
         let mut hash_input = Vec::new();
         if parameters.salt.is_some() {
@@ -107,9 +107,9 @@ where
             &parameters_var,
             &hash_input,
         )
-        .unwrap();
+        .unwrap().0;
         
-        Ok(verifier_challenge.is_eq(obtained_verifier_challenge))
+        Ok(obtained_verifier_challenge.is_eq(&verifier_challenge.to_vec())?)
     }
 }
 
@@ -125,10 +125,27 @@ where
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         let generator = GC::new_variable(cs, || f().map(|g| g.borrow().generator), mode)?;
-        let salt = f().map(|b| b.borrow().salt);
+        let native_salt = f().map(|b| b.borrow().salt)?;
+        let constraint_salt = [UInt8::constant(0); 32];
+        if native_salt.is_some() {
+            for i in 0..32 {
+                constraint_salt[i] = 
+                    UInt8::<ConstraintF<C>>::new_variable(
+                        ark_relations::ns!(cs, ""),
+                        || Ok(native_salt.unwrap()[i].clone()),
+                        mode,
+                    )?;
+            }
+
+            return Ok(Self {
+                generator,
+                salt: Some(constraint_salt),
+                _curve: PhantomData,
+            });
+        }
         Ok(Self {
             generator,
-            salt,
+            salt: None,
             _curve: PhantomData,
         })
     }
