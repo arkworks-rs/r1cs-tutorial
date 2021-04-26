@@ -1,6 +1,7 @@
 use ark_std::vec::Vec;
 use ark_ec::ProjectiveCurve;
-use ark_ff::{Field, PrimeField};
+use ark_ff::{Field, PrimeField, to_bytes};
+use ark_relations::r1cs::ConstraintSystemRef;
 use ark_r1cs_std::{prelude::*, fields::fp::FpVar, bits::uint8::UInt8};
 use ark_relations::r1cs::{Namespace, SynthesisError};
 
@@ -43,12 +44,10 @@ where
     _group: PhantomData<*const C>,
 }
 
-pub struct SignatureVar<F: PrimeField>
+pub struct SignatureVar<ConstraintF: PrimeField>
 {
-    prover_response: FpVar<F>,
-    verifier_challenge: FpVar<F>,
-    #[doc(hidden)]
-    _field: PhantomData<*const F>,
+    prover_response: Vec<UInt8<ConstraintF>>,
+    verifier_challenge: [UInt8<ConstraintF>; 32],
 }
 
 pub struct SchnorrSignatureVerifyGadget<
@@ -84,8 +83,10 @@ where
     {
         let prover_response = signature.prover_response;
         let verifier_challenge = signature.verifier_challenge;
-        let mut claimed_prover_commitment = parameters.generator.mul(prover_response);
-        let public_key_times_verifier_challenge = public_key.mul(*verifier_challenge);
+        let mut claimed_prover_commitment = parameters.generator.scalar_mul_le(
+            prover_response.to_bits_le()?.iter())?;
+        let public_key_times_verifier_challenge = public_key.pub_key.scalar_mul_le(
+            verifier_challenge.to_bits_le()?.iter())?;
         claimed_prover_commitment += &public_key_times_verifier_challenge;
         let claimed_prover_commitment = claimed_prover_commitment.into_affine();
 
@@ -97,18 +98,18 @@ where
         hash_input.extend_from_slice(message);
 
         let parameters_var =
-            (ROGadget as RandomOracleGadget)::ParametersVar::new_constant(
-                ark_relations::ns!(cs, "gadget_parameters"),
-                || Ok(&parameters),
+            <ROGadget as RandomOracleGadget<_, _>>::ParametersVar::new_constant(
+                ConstraintSystemRef::None,
+                (),
             )
             .unwrap();
-        let result_var = ROGadget::evaluate(
+        let obtained_verifier_challenge = ROGadget::evaluate(
             &parameters_var,
             &hash_input,
         )
         .unwrap();
         
-        Ok(verifier_challenge.equals(obtained_verifier_challenge))
+        Ok(verifier_challenge.is_eq(obtained_verifier_challenge))
     }
 }
 
@@ -161,10 +162,31 @@ where
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
-        let pub_key = GC::new_variable(cs, f, mode)?;
-        Ok(Self {
-            pub_key,
-            _group: PhantomData,
+        f().and_then(|val| {
+            let response_bytes = to_bytes![val.borrow().prover_response].unwrap();
+            let challenge_bytes = val.borrow().verifier_challenge;
+            let mut prover_response = Vec::<UInt8::<ConstraintF>>::new();
+            let mut verifier_challenge = [UInt8::<ConstraintF>::constant(0); 32];
+            for i in 0..response_bytes.len() {
+                prover_response.push(
+                    UInt8::<ConstraintF>::new_variable(
+                        ark_relations::ns!(cs, "prover_response"),
+                        || Ok(response_bytes[i].clone()),
+                        mode,
+                    )?);
+            }
+            for i in 0..32 {
+                verifier_challenge[i] = 
+                    UInt8::<ConstraintF>::new_variable(
+                        ark_relations::ns!(cs, "verifier_challenge"),
+                        || Ok(challenge_bytes[i].clone()),
+                        mode,
+                    )?;
+            }
+            Ok(SignatureVar {
+                prover_response,
+                verifier_challenge,
+            })
         })
     }
 }
