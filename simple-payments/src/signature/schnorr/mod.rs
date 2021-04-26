@@ -1,11 +1,10 @@
 use super::SignatureScheme;
-use ark_crypto_primitives::crh::pedersen::CRH;
-use ark_crypto_primitives::{CryptoError, Error};
+use ark_crypto_primitives::Error;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{
     bytes::ToBytes,
     fields::{Field, PrimeField},
-    to_bytes, One, ToConstraintField, UniformRand, Zero,
+    to_bytes, ToConstraintField, UniformRand,
 };
 use ark_std::io::{Result as IoResult, Write};
 use ark_std::rand::Rng;
@@ -13,7 +12,6 @@ use ark_std::{hash::Hash, marker::PhantomData, vec::Vec};
 use blake2::Blake2s;
 use digest::Digest;
 
-extern crate derivative;
 use derivative::Derivative;
 #[cfg(feature = "r1cs")]
 pub mod constraints;

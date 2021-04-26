@@ -8,4 +8,3 @@ pub mod random_oracle;
 pub mod signature;
 
 extern crate derivative;
-use derivative::Derivative;

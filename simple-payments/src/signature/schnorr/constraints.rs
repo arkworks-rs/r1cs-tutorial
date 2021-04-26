@@ -1,25 +1,19 @@
 use ark_ec::ProjectiveCurve;
-use ark_ff::{to_bytes, Field, PrimeField};
-use ark_r1cs_std::{bits::uint8::UInt8, fields::fp::FpVar, prelude::*};
+use ark_ff::{to_bytes, Field};
+use ark_r1cs_std::{bits::uint8::UInt8, prelude::*};
 use ark_relations::r1cs::ConstraintSystemRef;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::vec::Vec;
 
-use crate::random_oracle::blake2s::{
-    constraints::{ParametersVar as B2SParamsVar, ROGadget},
-    *,
-};
+use crate::random_oracle::blake2s::constraints::{ParametersVar as B2SParamsVar, ROGadget};
 use crate::random_oracle::RandomOracleGadget;
 use crate::signature::SigVerifyGadget;
-use ark_crypto_primitives::*;
 
-extern crate derivative;
 use derivative::Derivative;
 
 use core::{borrow::Borrow, marker::PhantomData};
 
 use crate::signature::schnorr::{Parameters, PublicKey, Schnorr, Signature};
-use digest::Digest;
 
 type ConstraintF<C> = <<C as ProjectiveCurve>::BaseField as Field>::BasePrimeField;
 

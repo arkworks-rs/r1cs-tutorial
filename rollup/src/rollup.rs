@@ -1,5 +1,6 @@
 use crate::account::AccountInformationVar;
 use crate::ledger::*;
+use crate::transaction::TransactionVar;
 use crate::ConstraintF;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
@@ -133,13 +134,13 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
         let mut prev_root = initial_root;
 
         for i in 0..NUM_TX {
-            let tx = self.transactions.and_then(|t| t.get(i));
-            let sender_acc_info = self.sender_pre_tx_info_and_path.map(|t| t[i].0);
-            let sender_path = self.sender_pre_tx_info_and_path.map(|t| t[i].1);
-            let recipient_acc_info = self.recv_pre_tx_info_and_path.map(|t| t[i].0);
-            let recipient_path = self.recv_pre_tx_info_and_path.map(|t| t[i].1);
-            let pre_tx_root = self.pre_tx_roots.map(|t| t[i]);
-            let post_tx_root = self.post_tx_roots.map(|t| t[i]);
+            let tx = self.transactions.as_ref().and_then(|t| t.get(i));
+            let sender_acc_info = self.sender_pre_tx_info_and_path.as_ref().map(|t| t[i].0);
+            let sender_path = self.sender_pre_tx_info_and_path.as_ref().map(|t| &t[i].1);
+            let recipient_acc_info = self.recv_pre_tx_info_and_path.as_ref().map(|t| t[i].0);
+            let recipient_path = self.recv_pre_tx_info_and_path.as_ref().map(|t| &t[i].1);
+            let pre_tx_root = self.pre_tx_roots.as_ref().map(|t| t[i]);
+            let post_tx_root = self.post_tx_roots.as_ref().map(|t| t[i]);
 
             // Let's declare all these things!
 
@@ -147,7 +148,7 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                 tx.ok_or(SynthesisError::AssignmentMissing)
             })?;
             // Declare the sender's initial account balance...
-            let mut sender_acc_info = AccountInformationVar::new_witness(
+            let sender_acc_info = AccountInformationVar::new_witness(
                 ark_relations::ns!(cs, "Sender Account Info"),
                 || sender_acc_info.ok_or(SynthesisError::AssignmentMissing),
             )?;
@@ -157,7 +158,7 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                     sender_path.ok_or(SynthesisError::AssignmentMissing)
                 })?;
             // Declare the recipient's initial account balance...
-            let mut recipient_acc_info = AccountInformationVar::new_witness(
+            let recipient_acc_info = AccountInformationVar::new_witness(
                 ark_relations::ns!(cs, "Recipient Account Info"),
                 || recipient_acc_info.ok_or(SynthesisError::AssignmentMissing),
             )?;

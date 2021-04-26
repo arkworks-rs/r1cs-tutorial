@@ -6,7 +6,6 @@ use crate::signature::{
 };
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_std::rand::Rng;
-use blake2::Blake2s;
 
 /// Transaction transferring some amount from one account to another.
 #[derive(Clone, Debug)]

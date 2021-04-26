@@ -8,7 +8,6 @@ use ark_crypto_primitives::merkle_tree::{self, MerkleTree, Path};
 use crate::signature::{schnorr, SignatureScheme};
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_std::rand::Rng;
-use blake2::Blake2s;
 use std::collections::HashMap;
 
 /// Represents transaction amounts and account balances.
