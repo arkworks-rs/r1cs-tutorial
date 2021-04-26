@@ -41,7 +41,7 @@ mod test {
     use ark_ec::ProjectiveCurve;
     use ark_ed_on_bls12_381::constraints::EdwardsVar as JubJubVar;
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
-    use ark_ff::{to_bytes, PrimeField};
+    use ark_ff::PrimeField;
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
     use ark_std::test_rng;

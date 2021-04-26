@@ -281,7 +281,7 @@ mod test {
     }
 
     #[test]
-    fn single_tx_test() {
+    fn single_tx_validity_test() {
         let mut rng = ark_std::test_rng();
         let pp = Parameters::sample(&mut rng);
         let mut state = State::new(32, &pp);
@@ -301,6 +301,10 @@ mod test {
         assert!(tx1.validate(&pp, &temp_state));
         let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[tx1.clone()], &mut temp_state, true).unwrap();
         assert!(test_cs(rollup));
+
+        let bad_tx =
+            Transaction::create(&pp, alice_id, AccountId(10), Amount(5), &alice_sk, &mut rng);
+        assert!(!bad_tx.validate(&pp, &state));
     }
 
     #[test]
