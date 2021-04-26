@@ -27,8 +27,3 @@ and computes the new MT state root.
 A block is a list of transactions.
 It is processed by running the circuit for each transaction in order, applying all state updates within the transaction.
 This means that the Merkle tree root for state will update after executing each tx in the block.
-
-
-
-In this chain, there is a fixed set of addresses that can transact.
-Each address has an associated account ID.
