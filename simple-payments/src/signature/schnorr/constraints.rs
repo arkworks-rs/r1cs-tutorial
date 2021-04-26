@@ -26,7 +26,7 @@ where
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
     generator: GC,
-    salt: Option<[UInt8<ConstraintF<C>>; 32]>,
+    salt: Option<Vec<UInt8<ConstraintF<C>>>>,
     _curve: PhantomData<C>,
 }
 
@@ -57,7 +57,7 @@ where
     for<'a> &'a GC: GroupOpsBounds<'a, C, GC>,
 {
     prover_response: Vec<UInt8<ConstraintF<C>>>,
-    verifier_challenge: [UInt8<ConstraintF<C>>; 32],
+    verifier_challenge: Vec<UInt8<ConstraintF<C>>>,
     #[doc(hidden)]
     _group: PhantomData<GC>,
 }
@@ -93,8 +93,8 @@ where
         signature: &Self::SignatureVar,
     ) -> Result<Boolean<ConstraintF<C>>, SynthesisError>
     {
-        let prover_response = signature.prover_response;
-        let verifier_challenge = signature.verifier_challenge;
+        let prover_response = signature.prover_response.clone();
+        let verifier_challenge = signature.verifier_challenge.clone();
         let mut claimed_prover_commitment = parameters.generator.scalar_mul_le(
             prover_response.to_bits_le()?.iter())?;
         let public_key_times_verifier_challenge = public_key.pub_key.scalar_mul_le(
@@ -104,7 +104,7 @@ where
 
         let mut hash_input = Vec::new();
         if parameters.salt.is_some() {
-            hash_input.extend_from_slice(&parameters.salt.unwrap());
+            hash_input.extend_from_slice(parameters.salt.as_ref().unwrap());
         }
         hash_input.extend_from_slice(&claimed_prover_commitment.to_bytes()?);
         hash_input.extend_from_slice(message);
@@ -137,17 +137,18 @@ where
         f: impl FnOnce() -> Result<T, SynthesisError>,
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
-        let generator = GC::new_variable(cs, || f().map(|g| g.borrow().generator), mode)?;
+        let cs = cs.into();
+        let generator = GC::new_variable(cs.clone(), || f().map(|g| g.borrow().generator), mode)?;
         let native_salt = f().map(|b| b.borrow().salt)?;
-        let constraint_salt = [UInt8::constant(0); 32];
+        let mut constraint_salt = Vec::<UInt8::<ConstraintF<C>>>::new();
         if native_salt.is_some() {
             for i in 0..32 {
-                constraint_salt[i] = 
+                constraint_salt.push( 
                     UInt8::<ConstraintF<C>>::new_variable(
-                        cs.into().clone(),
+                        cs.clone(),
                         || Ok(native_salt.unwrap()[i].clone()),
                         mode,
-                    )?;
+                    )?);
             }
 
             return Ok(Self {
@@ -195,25 +196,26 @@ where
         mode: AllocationMode,
     ) -> Result<Self, SynthesisError> {
         f().and_then(|val| {
+            let cs = cs.into();
             let response_bytes = to_bytes![val.borrow().prover_response].unwrap();
             let challenge_bytes = val.borrow().verifier_challenge;
             let mut prover_response = Vec::<UInt8::<ConstraintF<C>>>::new();
-            let mut verifier_challenge = [UInt8::<ConstraintF<C>>::constant(0); 32];
+            let mut verifier_challenge = Vec::<UInt8::<ConstraintF<C>>>::new();
             for i in 0..response_bytes.len() {
                 prover_response.push(
                     UInt8::<ConstraintF<C>>::new_variable(
-                        cs.into().clone(),
+                        cs.clone(),
                         || Ok(response_bytes[i].clone()),
                         mode,
                     )?);
             }
             for i in 0..32 {
-                verifier_challenge[i] = 
+                verifier_challenge.push( 
                     UInt8::<ConstraintF<C>>::new_variable(
-                        cs.into().clone(),
+                        cs.clone(),
                         || Ok(challenge_bytes[i].clone()),
                         mode,
-                    )?;
+                    )?);
             }
             Ok(SignatureVar {
                 prover_response,
