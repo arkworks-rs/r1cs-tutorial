@@ -1,6 +1,6 @@
 use crate::account::{AccountId, AccountPublicKey, AccountSecretKey};
 use crate::ledger::{self, Amount};
-use ark_crypto_primitives::signature::{
+use crate::signature::{
     schnorr::{self, Schnorr},
     SignatureScheme,
 };
@@ -26,7 +26,7 @@ impl Transaction {
     /// Verify just the signature in the transaction.
     fn verify_signature(
         &self,
-        pp: &schnorr::Parameters<EdwardsProjective, Blake2s>,
+        pp: &schnorr::Parameters<EdwardsProjective>,
         pub_key: &AccountPublicKey,
     ) -> bool {
         // The authorized message consists of

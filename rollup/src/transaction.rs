@@ -1,8 +1,8 @@
 use ark_std::rand::Rng;
 use blake2::Blake2s;
 use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective};
-use ark_crypto_primitives::signature::{SignatureScheme, schnorr::{self, Schnorr}};
-use ark_crypto_primitives::signature::schnorr::constraints::*;
+use ark_simple_payments::signature::{SignatureScheme, schnorr::{self, Schnorr}};
+use ark_simple_payments::signature::schnorr::constraints::*;
 use crate::ledger::{self, AmountVar, AccRootVar, AccPathVar};
 use crate::account::{AccountPublicKey, AccountId, AccountSecretKey};
 
@@ -23,7 +23,7 @@ impl TransactionVar {
     /// Verify just the signature in the transaction.
     fn verify_signature(
         &self,
-        pp: &schnorr::ParametersVar<EdwardsProjective, Blake2s>,
+        pp: &schnorr::ParametersVar<EdwardsProjective>,
         pub_key: &AccountPublicKeyVar
     ) -> bool {
         // The authorized message consists of
