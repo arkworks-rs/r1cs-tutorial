@@ -94,7 +94,7 @@ where
         if parameters.salt.is_some() {
             hash_input.extend_from_slice(&parameters.salt.unwrap());
         }
-        hash_input.extend_from_slice(claimed_prover_commitment.to_bytes()?);
+        hash_input.extend_from_slice(&claimed_prover_commitment.to_bytes()?);
         hash_input.extend_from_slice(message);
 
         let parameters_var =
