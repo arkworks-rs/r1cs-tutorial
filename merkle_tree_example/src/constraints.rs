@@ -1,60 +1,130 @@
-use ark_crypto_primitives::crh::{CRHGadget, TwoToOneCRHGadget};
-use ark_crypto_primitives::merkle_tree::{constraints::PathVar, Config, Path, TwoToOneDigest};
-use ark_ff::PrimeField;
-use ark_r1cs_std::alloc::AllocVar;
-use ark_r1cs_std::boolean::Boolean;
-use ark_r1cs_std::eq::EqGadget;
-use ark_r1cs_std::uint8::UInt8;
+use ark_crypto_primitives::crh::{CRH, TwoToOneCRH, TwoToOneCRHGadget};
+use ark_crypto_primitives::merkle_tree::{constraints::PathVar};
+use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-use ark_std::marker::PhantomData;
+use crate::common::*;
+use crate::{SimplePath, Root};
 
-pub struct MerkleTreeVerification<P, LeafH, TwoToOneH, F>
-where
-    P: Config,
-    LeafH: CRHGadget<P::LeafHash, F>,
-    TwoToOneH: TwoToOneCRHGadget<P::TwoToOneHash, F>,
-    F: PrimeField,
-{
-    pub root: TwoToOneDigest<P>,
-    pub leaf: [u8; 3],
-    pub authentication_path: Path<P>,
+// (You don't need to worry about what's going on in the next two type definitions,
+// just know that these are types that you can use.)
 
-    pub leaf_hash_params: LeafH::ParametersVar,
-    pub two_to_one_hash_params: TwoToOneH::ParametersVar,
+/// The R1CS equivalent of the the Merkle tree root.
+pub type RootVar =
+    <TwoToOneHashGadget as TwoToOneCRHGadget<TwoToOneHash, ConstraintF>>::OutputVar;
 
-    pub _f: PhantomData<F>,
+/// The R1CS equivalent of the the Merkle tree path.
+pub type SimplePathVar = PathVar<crate::MerkleConfig, LeafHashGadget, TwoToOneHashGadget, ConstraintF>;
+
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct MerkleTreeVerification {
+    // These are constants that will be embedded into the circuit
+    pub leaf_crh_params: <LeafHash as CRH>::Parameters,
+    pub two_to_one_crh_params: <TwoToOneHash as TwoToOneCRH>::Parameters,
+
+    // These are the public inputs to the circuit.
+    pub root: Root,
+    pub leaf: u8,
+
+    // This is the private witness to the circuit.
+    pub authentication_path: Option<SimplePath>,
 }
 
-impl<P, LeafH, TwoToOneH, F> ConstraintSynthesizer<F>
-    for MerkleTreeVerification<P, LeafH, TwoToOneH, F>
-where
-    P: Config,
-    LeafH: CRHGadget<P::LeafHash, F>,
-    TwoToOneH: TwoToOneCRHGadget<P::TwoToOneHash, F>,
-    F: PrimeField,
-{
-    fn generate_constraints(self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
-        let path_var: PathVar<P, LeafH, TwoToOneH, F> =
-            PathVar::new_witness(ark_relations::ns!(cs, "path_var"), || {
-                Ok(&self.authentication_path)
-            })?;
-
-        let root_var = <TwoToOneH as TwoToOneCRHGadget<_, _>>::OutputVar::new_input(
+impl ConstraintSynthesizer<ConstraintF> for MerkleTreeVerification {
+    fn generate_constraints(self, cs: ConstraintSystemRef<ConstraintF>) -> Result<(), SynthesisError> {
+        // First, we allocate the public inputs
+        let root = RootVar::new_input(
             ark_relations::ns!(cs, "root_var"),
             || Ok(&self.root),
         )?;
 
-        let leaf_var = <UInt8<F>>::new_input_vec(ark_relations::ns!(cs, "leaf_var"), &self.leaf)?;
+        let leaf = UInt8::new_input(ark_relations::ns!(cs, "leaf_var"), || Ok(&self.leaf))?;
 
-        let is_member = path_var.verify_membership(
-            &self.leaf_hash_params,
-            &self.two_to_one_hash_params,
-            &root_var,
-            &leaf_var.as_slice(),
+        // Then, we allocate the public parameters as constants:
+        let leaf_crh_params = LeafHashParamsVar::new_constant(cs.clone(), &self.leaf_crh_params)?;
+        let two_to_one_crh_params = TwoToOneHashParamsVar::new_constant(cs.clone(), &self.two_to_one_crh_params)?;
+
+
+        // Finally, we allocate our path as a private witness variable:
+        let path =
+            SimplePathVar::new_witness(ark_relations::ns!(cs, "path_var"), || {
+                Ok(self.authentication_path.as_ref().unwrap())
+            })?;
+
+        let leaf_bytes = vec![leaf; 1];
+
+        // Now, we have to check membership. How do we do that?
+        // Hint: look at https://github.com/arkworks-rs/crypto-primitives/blob/6be606259eab0aec010015e2cfd45e4f134cd9bf/src/merkle_tree/constraints.rs#L135
+
+        let is_member = // TODO: FILL IN THE BLANK!
+            path.verify_membership(
+            &leaf_crh_params,
+            &two_to_one_crh_params,
+            &root,
+            &leaf_bytes.as_slice(),
         )?;
 
         is_member.enforce_equal(&Boolean::TRUE)?;
 
         Ok(())
     }
+}
+
+// Run this test via `cargo test --release test_merkle_tree`.
+#[test]
+fn test_merkle_tree_constraints() {
+    use ark_relations::r1cs::{ConstraintSystem, ConstraintLayer, TracingMode};
+    use tracing_subscriber::layer::SubscriberExt;
+
+    // Let's set up an RNG for use within tests. Note that this is *not* safe
+    // for any production use.
+    let mut rng = ark_std::test_rng();
+
+    // First, let's sample the public parameters for the hash functions:
+    let leaf_crh_params = <LeafHash as CRH>::setup(&mut rng).unwrap();
+    let two_to_one_crh_params = <TwoToOneHash as TwoToOneCRH>::setup(&mut rng).unwrap();
+
+    // Next, let's construct our tree.
+    // This follows the API in https://github.com/arkworks-rs/crypto-primitives/blob/6be606259eab0aec010015e2cfd45e4f134cd9bf/src/merkle_tree/mod.rs#L156
+    let tree = crate::SimpleMerkleTree::new(
+        &leaf_crh_params,
+        &two_to_one_crh_params,
+        &[1u8, 2u8, 3u8, 10u8, 9u8, 17u8, 70u8, 45u8], // the i-th entry is the i-th leaf.
+    ).unwrap();
+
+    // Now, let's try to generate a membership proof for the 5th item, i.e. 9.
+    let proof = tree.generate_proof(4).unwrap(); // we're 0-indexing!
+    // This should be a proof for the membership of a leaf with value 9. Let's check that!
+
+    // First, let's get the root we want to verify against:
+    let root = tree.root();
+
+    let circuit = MerkleTreeVerification {
+        // constants
+        leaf_crh_params,
+        two_to_one_crh_params,
+
+        // public inputs
+        root,
+        leaf: 9u8,
+
+        // witness
+        authentication_path: Some(proof)
+    };
+    // First, some boilerplat that helps with debugging
+    let mut layer = ConstraintLayer::default();
+    layer.mode = TracingMode::OnlyConstraints;
+    let subscriber = tracing_subscriber::Registry::default().with(layer);
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    // Next, let's make the circuit!
+    let cs = ConstraintSystem::new_ref();
+    circuit.generate_constraints(cs.clone()).unwrap();
+    // Let's check whether the constraint system is satisfied
+    let is_satisfied = cs.is_satisfied().unwrap();
+    if !is_satisfied {
+        // If it isn't, find out the offending constraint.
+        println!("{:?}", cs.which_is_unsatisfied());
+    }
+    assert!(is_satisfied);
 }

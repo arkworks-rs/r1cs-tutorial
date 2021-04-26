@@ -231,7 +231,7 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
 
             // Enforce that the state root after the previous transaction equals
             // the starting state root for this transaction
-            prev_root.enforce_equal(&pre_tx_root)?;
+            prev_root.enforce_equal(&pre_tx_root)?; // TODO: FILL IN THE BLANKS
 
             // Validate that the transaction signature and amount is correct.
             tx.validate(
@@ -245,14 +245,14 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                 &pre_tx_root,
                 &post_tx_root,
             )?
-            .enforce_equal(&Boolean::TRUE)?;
+            .enforce_equal(&Boolean::TRUE)?; // TODO: FILL IN THE BLANKS
 
             // Set the root for the next transaction.
             prev_root = post_tx_root;
         }
         // Check that the final root is consistent with the root computed after
         // applying all state transitions
-        prev_root.enforce_equal(&final_root)?;
+        prev_root.enforce_equal(&final_root)?; // TODO: FILL IN THE BLANKS
         Ok(())
     }
 }

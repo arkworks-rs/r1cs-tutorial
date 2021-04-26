@@ -1,9 +1,18 @@
-# Merkle Tree example
+# Checking Merkle tree paths
 
-In this example of the code, our goal is going to be to write a simple wrapper around the merkle tree implementation at
-https://github.com/arkworks-rs/crypto-primitives/tree/main/src/merkle_tree,
-for making a circuit that just verifies a single Merkle Tree authentication path.
+In this example, our goal is to familiarize ourselves with the workflow of
+writing constraints in `arkworks`. We do this by writing a simple circuit
+ that just verifies a single Merkle tree authentication path, using the APIs in
+https://github.com/arkworks-rs/crypto-primitives/tree/main/src/merkle_tree.
 
-This will showcase allocating variables into a circuit, and just using the arkworks API's.
+We will learn how to:
+* Allocate public and private variables in a circuit
+* Invoke gadgets
+* Invoke SNARKs on the final circuit
 
-TODO: Make a native version of the code.
+## Getting started:
+
+To get started, let's take a look at a "native" version of the computation we want to perform.
+Let's go to [`src/lib.rs`](src/lib.rs) and take a look at the example there.
+
+
