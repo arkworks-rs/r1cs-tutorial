@@ -59,32 +59,26 @@ impl TransactionVar {
         post_root: &AccRootVar,
     ) -> Result<Boolean<ConstraintF>, SynthesisError> {
         // Verify the signature against the sender pubkey.
-        let sig_verifies =
-            self.verify_signature(&parameters.sig_params, &pre_sender_acc_info.public_key)?; // TODO: FILL IN THE BLANKS
+        // TODO: FILL IN THE BLANK
+        // let sig_verifies = ???;
 
         // Compute the new sender balance.
         let mut post_sender_acc_info = pre_sender_acc_info.clone();
-        post_sender_acc_info.balance = post_sender_acc_info.balance.checked_sub(&self.amount)?; // TODO: FILL IN THE BLANKS
-        // Compute the new receiver balance.
+        // TODO: Safely subtract amount sent from the sender's balance
+        // post_sender_acc_info.balance = ???;
+        
+        // TODO: Compute the new receiver balance, ensure its overflow safe.
         let mut post_recipient_acc_info = pre_recipient_acc_info.clone();
-        post_recipient_acc_info.balance = post_recipient_acc_info.balance.checked_add(&self.amount)?; // TODO: FILL IN THE BLANKS
+        // post_recipient_acc_info.balance = ???
 
         // Check that the pre-tx sender account information is correct with
         // respect to `pre_tx_root`, and that the post-tx sender account
         // information is correct with respect to `post_tx_root`.
-        let sender_exists = pre_sender_path.verify_membership(
-            &parameters.leaf_crh_params,
-            &parameters.two_to_one_crh_params,
-            &pre_root,
-            &pre_sender_acc_info.to_bytes_le().as_slice(),
-        )?; // TODO: FILL IN THE BLANKS
+        // HINT: Use the path structs
+        // TODO: FILL IN THE FOLLOWING
+        // let sender_exists = ???
 
-        let sender_updated_correctly = post_sender_path.verify_membership(
-            &parameters.leaf_crh_params,
-            &parameters.two_to_one_crh_params,
-            &post_root,
-            &post_sender_acc_info.to_bytes_le().as_slice(),
-        )?; // TODO: FILL IN THE BLANKS
+        // let sender_updated_correctly = ???
 
         // Check that the pre-tx recipient account information is correct with
         // respect to `pre_tx_root`, and that the post-tx recipient account
