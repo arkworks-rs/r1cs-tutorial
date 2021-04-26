@@ -6,6 +6,8 @@ In this crate, we build a circuit for proving the validity of a batch of payment
 
 In this chain, an "Account" is a (ID, PubKey, Balance) triple. Upon registration, (PubKey, Balance) is stored in a Merkle tree, at the index specified by the identifier. For simplicity and efficiency, in this tutorial we support only a fixed number of accounts (say, 256).
 
+We are foregoing checking for replay protection (sequence numbers) in this example.
+
 ## Tx processing
 
 To transfer currency from one account to another, users create transactions, which contain the sender's ID, the receiver's ID, the transaction amount, and a signature on the foregoing with respect to the sender's secret key. A transaction is valid if:
