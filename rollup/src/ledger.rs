@@ -23,11 +23,11 @@ impl AmountVar {
         self.0.to_bytes().unwrap()
     }
 
-    pub fn checked_add(&self, other: &Self) -> Option<Self> {
+    pub fn checked_add(&self, other: &Self) -> Self {
         unimplemented!()
     }
 
-    pub fn checked_sub(self, other: Self) -> Option<Self> {
+    pub fn checked_sub(self, other: Self) -> Self {
         unimplemented!()
     }
 }
@@ -64,8 +64,8 @@ pub type LeafHashParamsVar = <LeafHashGadget as CRHGadget<LeafHash, ConstraintF>
 pub type TwoToOneHashParamsVar = <TwoToOneHashGadget as TwoToOneCRHGadget<TwoToOneHash, ConstraintF>>::ParametersVar;
 
 /// The parameters that are used in transaction creation and validation.
-pub struct Parameters {
-    pub sig_params: schnorr::Parameters<EdwardsProjective, Blake2s>,
+pub struct ParametersVar {
+    // pub sig_params: schnorr::Parameters<EdwardsProjective, Blake2s>,
     pub leaf_crh_params: LeafHashParamsVar,
     pub two_to_one_crh_params: TwoToOneHashParamsVar,
 }

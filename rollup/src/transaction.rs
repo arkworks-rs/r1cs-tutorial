@@ -44,23 +44,49 @@ impl TransactionVar {
     pub fn validate(
         &self,
         parameters: &ledger::ParametersVar,
-        claimed_sender_acc_info: &AccountInformationVar,
-        acc_tree_root: &AccRootVar,
-        claimed_sender_acc_info_mem_proof: &AccPathVar,
+        pre_sender_acc_info: &AccountInformationVar,
+        pre_sender_path: &AccPathVar,
+        pre_recipient_acc_info: &AccountInformationVar,
+        pre_recipient_path: &AccPathVar,
+        pre_root: &AccRootVar,
+        post_root: &AccRootVar,
     ) -> Result<Boolean<ConstraintF>, SynthesisError> {
-        // Check merkle tree path for 
-        let sender_exists = claimed_sender_acc_info_mem_proof.verify_membership(
-            parameters.leaf_crh_params,
-            parameters.two_to_one_crh_params,
-            &acc_tree_root,
-            &claimed_sender_acc_info.to_bytes()
-        );
-
         // Verify the signature against the sender pubkey.
-        let sig_verifies = self.verify_signature(&parameters.sig_params, &sender_acc_info.public_key);
-        // Verify the amount is available in the sender account.
-        let balance_is_sufficient = self.amount.less_than_eq(&sender_acc_info.balance);
-        // TODO: Verify that recipient account exists.
-        sender_exists.and(&sig_verifies)?.and(&balance_is_sufficient)?
+        let sig_verifies = self.verify_signature(&parameters.sig_params, &pre_sender_acc_info.public_key);
+
+        // Compute the new sender balance.
+        let mut post_sender_acc_info = pre_sender_acc_info.clone();
+        post_sender_acc_info.balance = pre_sender_acc_info.balance.checked_sub(&tx.amount);
+        // Compute the new receiver balance.
+        let mut post_recipient_acc_info = pre_recipient_acc_info.clone();
+        post_recipient_acc_info.balance = pre_recipient_acc_info.balance.checked_add(&tx.amount);
+
+        // Check that the pre-tx sender account information is correct with 
+        // respect to `pre_tx_root`, and that the post-tx sender account
+        // information is correct with respect to `post_tx_root`.
+        let sender_exists_and_updated_correctly = pre_sender_path.update_and_check(
+            &parameters.leaf_crh_params, 
+            &parameters.two_to_one_crh_params, 
+            &pre_root,
+            &post_root,
+            &pre_sender_acc_info.to_bytes_le(),
+            &post_sender_acc_info.to_bytes_le(),
+        )?;
+
+        // Check that the pre-tx recipient account information is correct with 
+        // respect to `pre_tx_root`, and that the post-tx recipient account
+        // information is correct with respect to `post_tx_root`.
+        let recipient_exists_and_updated_correctly = pre_recipient_path.update_and_check(
+            &parameters.leaf_crh_params, 
+            &parameters.two_to_one_crh_params, 
+            &pre_root,
+            &post_root,
+            &pre_recipient_acc_info.to_bytes_le(),
+            &post_recipient_acc_info.to_bytes_le(),
+        )?;
+
+        sender_exists_and_updated_correctly
+            .and(&recipient_exists_and_updated_correctly)?
+            .and(&sig_verifies)
     }
 }

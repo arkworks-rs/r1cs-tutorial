@@ -6,6 +6,7 @@ use crate::ledger::{self, Amount};
 use crate::account::{AccountPublicKey, AccountId, AccountSecretKey};
 
 /// Transaction transferring some amount from one account to another.
+#[derive(Clone, Debug)]
 pub struct Transaction {
     /// The account information of the sender.
     pub sender: AccountId,

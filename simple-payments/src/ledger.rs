@@ -3,7 +3,7 @@ use blake2::Blake2s;
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_crypto_primitives::signature::{SignatureScheme, schnorr};
 use ark_crypto_primitives::crh::{TwoToOneCRH, CRH, pedersen, injective_map::{PedersenCRHCompressor, TECompressor}};
-use ark_crypto_primitives::merkle_tree::{self, MerkleTree};
+use ark_crypto_primitives::merkle_tree::{self, MerkleTree, Path};
 use ark_std::rand::Rng;
 use crate::transaction::Transaction;
 use crate::account::{AccountId, AccountInformation, AccountPublicKey, AccountSecretKey};
@@ -80,6 +80,8 @@ impl merkle_tree::Config for MerkleConfig {
 pub type AccMerkleTree = MerkleTree<MerkleConfig>;
 /// The root of the account Merkle tree.
 pub type AccRoot = <TwoToOneHash as TwoToOneCRH>::Output;
+/// A membership proof for a given account.
+pub type AccPath = Path<MerkleConfig>;
 
 pub struct State {
     /// What is the next available account identifier?
