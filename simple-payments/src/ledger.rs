@@ -11,7 +11,7 @@ use crate::account::{AccountId, AccountInformation, AccountPublicKey, AccountSec
 
 /// Represents transaction amounts and account balances.
 #[derive(Hash, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
-pub struct Amount(u64);
+pub struct Amount(pub u64);
 
 impl Amount {
     pub fn to_bytes_le(&self) -> Vec<u8> {

@@ -1,10 +1,8 @@
 [package]
-name = "ark-r1cs-tutorial"
+name = "ark-simple-payments"
 version = "0.2.0"
-authors = [
-  "arkworks contributors"
-]
-description = "A tutorial on writing R1CS constraints, for the ZKProof Workshop"
+authors = [ "arkworks contributors" ]
+description = "A simple payments system"
 repository = "https://github.com/arkworks-rs/r1cs-tutorial"
 keywords = ["cryptography", "relations", "r1cs"]
 categories = ["cryptography"]
