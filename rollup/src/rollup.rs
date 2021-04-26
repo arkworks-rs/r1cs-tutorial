@@ -359,5 +359,64 @@ mod test {
         assert!(!bad_tx.validate(&pp, &state));
         assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
     }
+
+    // Builds a circuit with two txs, using different pubkeys & amounts every time.
+    // It returns this circuit
+    fn build_two_tx_circuit() -> Rollup::<2> {
+        use ark_std::rand::Rng;
+        let mut rng = ark_std::test_rng();
+        let pp = Parameters::sample(&mut rng);
+        let mut state = State::new(32, &pp);
+        // Let's make an account for Alice.
+        let (alice_id, _alice_pk, alice_sk) =
+            state.sample_keys_and_register(&pp, &mut rng).unwrap();
+        // Let's give her some initial balance to start with.
+        state
+            .update_balance(alice_id, Amount(1000))
+            .expect("Alice's account should exist");
+        // Let's make an account for Bob.
+        let (bob_id, _bob_pk, bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
+
+        let amount_to_send = rng.gen_range(0, 200);
+
+        // Alice wants to transfer amount_to_send units to Bob, and does this twice
+        let mut temp_state = state.clone();
+        let tx1 = Transaction::create(&pp, alice_id, bob_id, Amount(amount_to_send), &alice_sk, &mut rng);
+        let rollup = Rollup::<2>::with_state_and_transactions(pp.clone(), &[tx1.clone(), tx1.clone()], &mut temp_state, true).unwrap();
+        rollup
+    }
+
+    #[test]
+    fn snark_verification() {
+        use ark_snark::SNARK;
+        use ark_groth16::Groth16;
+        use ark_bls12_381::Bls12_381;
+        // Use a circuit just to generate the circuit
+        let circuit_defining_cs = build_two_tx_circuit();
+
+        let mut rng = ark_std::test_rng();
+        let (pk, vk) = Groth16::<Bls12_381>::circuit_specific_setup(circuit_defining_cs, &mut rng).unwrap();
+
+        // Use the same circuit but with different inputs to verify against
+        // This test checks that the SNARK passes on the provided input
+        let circuit_to_verify_against = build_two_tx_circuit();
+        let public_input = [circuit_to_verify_against.initial_root.unwrap(), 
+            circuit_to_verify_against.final_root.unwrap()];
+
+        let proof = Groth16::prove(&pk, circuit_to_verify_against, &mut rng).unwrap();
+        let valid_proof = Groth16::verify(&vk, &public_input, &proof).unwrap();
+        assert!(valid_proof);
+
+        // Use the same circuit but with different inputs to verify against
+        // This test checks that the SNARK fails on the wrong input
+        let circuit_to_verify_against = build_two_tx_circuit();
+        // Error introduced, used the final root twice!
+        let public_input = [circuit_to_verify_against.final_root.unwrap(), 
+            circuit_to_verify_against.final_root.unwrap()];
+
+        let proof = Groth16::prove(&pk, circuit_to_verify_against, &mut rng).unwrap();
+        let valid_proof = Groth16::verify(&vk, &public_input, &proof).unwrap();
+        assert!(!valid_proof);
+    }
 }
 // Optimization ideas: remove `pre_tx_roots` entirely.
