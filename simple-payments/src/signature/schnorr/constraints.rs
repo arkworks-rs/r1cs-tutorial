@@ -110,7 +110,8 @@ where
         hash_input.extend_from_slice(message);
 
         let parameters_var =
-            <ROGadget as RandomOracleGadget<_, _>>::ParametersVar::new_constant(
+            <<ROGadget as RandomOracleGadget<_, ConstraintF<C>>>::ParametersVar
+                as AllocVar<(), ConstraintF<C>>>::new_constant(
                 ConstraintSystemRef::None,
                 (),
             )
@@ -143,7 +144,7 @@ where
             for i in 0..32 {
                 constraint_salt[i] = 
                     UInt8::<ConstraintF<C>>::new_variable(
-                        ark_relations::ns!(cs, ""),
+                        cs.into().clone(),
                         || Ok(native_salt.unwrap()[i].clone()),
                         mode,
                     )?;
@@ -201,7 +202,7 @@ where
             for i in 0..response_bytes.len() {
                 prover_response.push(
                     UInt8::<ConstraintF<C>>::new_variable(
-                        ark_relations::ns!(cs, "prover_response"),
+                        cs.into().clone(),
                         || Ok(response_bytes[i].clone()),
                         mode,
                     )?);
@@ -209,7 +210,7 @@ where
             for i in 0..32 {
                 verifier_challenge[i] = 
                     UInt8::<ConstraintF<C>>::new_variable(
-                        ark_relations::ns!(cs, "verifier_challenge"),
+                        cs.into().clone(),
                         || Ok(challenge_bytes[i].clone()),
                         mode,
                     )?;

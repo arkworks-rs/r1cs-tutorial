@@ -15,8 +15,8 @@ use digest::Digest;
 
 extern crate derivative;
 use derivative::Derivative;
-#[cfg(feature = "r1cs")]
-pub mod constraints;
+// #[cfg(feature = "r1cs")]
+// pub mod constraints;
 
 pub struct Schnorr<C: ProjectiveCurve> {
     _group: PhantomData<C>,
