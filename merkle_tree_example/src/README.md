@@ -14,5 +14,3 @@ We will learn how to:
 
 To get started, let's take a look at a "native" version of the computation we want to perform.
 Let's go to [`src/lib.rs`](src/lib.rs) and take a look at the example there.
-
-
