@@ -1,35 +1,37 @@
 use ark_std::rand::Rng;
 use blake2::Blake2s;
-use ark_ed_on_bls12_381::EdwardsProjective;
+use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective};
 use ark_crypto_primitives::signature::{SignatureScheme, schnorr::{self, Schnorr}};
+use ark_crypto_primitives::signature::schnorr::constraints::*;
+use ark_crypto_primitives::merkle_tree::constraints::PathVar;
 use crate::ledger::{self, Amount};
 use crate::account::{AccountPublicKey, AccountId, AccountSecretKey};
 
 /// Transaction transferring some amount from one account to another.
-pub struct Transaction {
+pub struct TransactionVar {
     /// The account information of the sender.
-    pub sender: AccountId,
+    pub sender: AccountIdVar,
     /// The account information of the recipient.
-    pub recipient: AccountId,
+    pub recipient: AccountIdVar,
     /// The amount being transferred from the sender to the receiver.
-    pub amount: Amount,
+    pub amount: AmountVar,
     /// The spend authorization is a signature over the sender, the recipient,
     /// and the amount.
-    pub signature: schnorr::Signature<EdwardsProjective>,
+    pub signature: SignatureVar<EdwardsProjective, EdwardsVar>,
 }
 
-impl Transaction {
+impl TransactionVar {
     /// Verify just the signature in the transaction.
     fn verify_signature(
         &self,
-        pp: &schnorr::Parameters<EdwardsProjective, Blake2s>,
-        pub_key: &AccountPublicKey
+        pp: &schnorr::ParametersVar<EdwardsProjective, Blake2s>,
+        pub_key: &AccountPublicKeyVar
     ) -> bool {
         // The authorized message consists of
         // (SenderAccId || SenderPubKey || RecipientAccId || RecipientPubKey || Amount)
-        let mut message = self.sender.to_bytes_le();
-        message.extend(self.recipient.to_bytes_le());
-        message.extend(self.amount.to_bytes_le());
+        let mut message = self.sender.to_bytes();
+        message.extend(self.recipient.to_bytes());
+        message.extend(self.amount.to_bytes());
         Schnorr::verify(&pp, &pub_key, &message, &self.signature).unwrap()
     }
 
@@ -42,52 +44,24 @@ impl Transaction {
     /// 3. Verify that the recipient's account exists.
     pub fn validate(
         &self,
-        parameters: &ledger::Parameters,
-        state: &ledger::State
-    ) -> bool {
-        // Lookup public key corresponding to sender ID
-        if let Some(sender_acc_info) = state.id_to_account_info.get(&self.sender) {
-            let mut result = true;
-            // Verify the signature against the sender pubkey.
-            result &= self.verify_signature(&parameters.sig_params, &sender_acc_info.public_key);
-            // assert!(result, "signature verification failed");
-            // Verify the amount is available in the sender account.
-            result &= self.amount <= sender_acc_info.balance;
-            // Verify that recipient account exists.
-            result &= state.id_to_account_info.get(&self.recipient).is_some();
-            result
-        } else {
-            false
-        }
-    }
+        parameters: &ledger::ParametersVar,
+        claimed_sender_acc_info: &AccountInformationVar,
+        acc_tree_root: &<TwoToOneHashGadget as TwoToOneCRHGadget<TwoToOneHash, ConstraintF>>::OutputVar,
+        claimed_sender_acc_info_mem_proof: &PathVar<MerkleConfig, LeafHashGadget, TwoToOneHashGadget, ConstraintF>,
+    ) -> Result<Boolean<ConstraintF>, SynthesisError> {
+        // Check merkle tree path for 
+        let sender_exists = claimed_sender_acc_info_mem_proof.verify_membership(
+            parameters.leaf_crh_params,
+            parameters.two_to_one_crh_params,
+            &acc_tree_root,
+            &claimed_sender_acc_info.to_bytes()
+        );
 
-    /// Create a (possibly invalid) transaction.
-    pub fn create<R: Rng>(
-        parameters: &ledger::Parameters,
-        sender: AccountId,
-        recipient: AccountId,
-        amount: Amount,
-        sender_sk: &AccountSecretKey,
-        rng: &mut R,
-    ) -> Self {
-        // The authorized message consists of (SenderAccId || RecipientAccId || Amount)
-        let mut message = sender.to_bytes_le();
-        message.extend(recipient.to_bytes_le());
-        message.extend(amount.to_bytes_le());
-        let signature = Schnorr::sign(&parameters.sig_params, &sender_sk, &message, rng).unwrap();
-        Self {
-            sender,
-            recipient,
-            amount,
-            signature,
-        }
+        // Verify the signature against the sender pubkey.
+        let sig_verifies = self.verify_signature(&parameters.sig_params, &sender_acc_info.public_key);
+        // Verify the amount is available in the sender account.
+        let balance_is_sufficient = self.amount.less_than_eq(&sender_acc_info.balance);
+        // TODO: Verify that recipient account exists.
+        sender_exists.and(&sig_verifies)?.and(&balance_is_sufficient)?
     }
 }
-
-
-// Ideas to make exercises more interesting/complex:
-// 1. Add fees
-// 2. Add recipient confirmation requirement if tx amount is too large.
-// 3. Add authority confirmation if tx amount is too large.
-// 4. Create account if it doesn't exist.
-// 5. Add idea for compressing state transitions with repeated senders and recipients.
