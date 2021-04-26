@@ -32,6 +32,7 @@ impl AmountVar {
         // adding the field element representation
         // converting the field elements to bits
         // and then checking if the 65th bit is 0.
+        // TODO: Demonstrate via circuit profiling if this needs optimization.
         let self_bits = self.0.to_bits_le();
         let mut self_fe = Boolean::le_bits_to_fp_var(&self_bits)?;
         let other_bits = other.0.to_bits_le();
@@ -47,7 +48,22 @@ impl AmountVar {
     }
 
     pub fn checked_sub(self, other: Self) -> Result<Self, SynthesisError> {
-        unimplemented!()
+        // To do a checked sub, we convert the uints to a field element.
+        // We do the sub on the field element.
+        // We then cast the field element to bits, and ensure the top bits are 0.
+        // We then convert these bits to a field element
+        // TODO: Demonstrate via circuit profiling if this needs optimization.
+        let self_bits = self.0.to_bits_le();
+        let mut self_fe = Boolean::le_bits_to_fp_var(&self_bits)?;
+        let other_bits = other.0.to_bits_le();
+        let mut other_fe = Boolean::le_bits_to_fp_var(&other_bits)?;
+        let res_fe = self_fe - other_fe;
+        let res_bz = res_fe.to_bytes()?;
+        // Ensure top bit is 0
+        res_bz[res_bz.len() - 1].enforce_equal(&UInt8::<ConstraintF>::constant(0));
+        // Convert to UInt64
+        let res = UInt64::from_bits_le(&res_fe.to_bits_le()?);
+        Ok(AmountVar(res))    
     }
 }
 
