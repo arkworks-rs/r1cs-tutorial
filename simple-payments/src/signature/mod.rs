@@ -1,4 +1,4 @@
-use crate::Error;
+use ark_crypto_primitives::Error;
 use ark_ff::bytes::ToBytes;
 use ark_std::hash::Hash;
 use ark_std::rand::Rng;
@@ -36,18 +36,6 @@ pub trait SignatureScheme {
         message: &[u8],
         signature: &Self::Signature,
     ) -> Result<bool, Error>;
-
-    fn randomize_public_key(
-        pp: &Self::Parameters,
-        public_key: &Self::PublicKey,
-        randomness: &[u8],
-    ) -> Result<Self::PublicKey, Error>;
-
-    fn randomize_signature(
-        pp: &Self::Parameters,
-        signature: &Self::Signature,
-        randomness: &[u8],
-    ) -> Result<Self::Signature, Error>;
 }
 
 #[cfg(test)]
@@ -75,30 +63,13 @@ mod test {
         assert!(!S::verify(&parameters, &pk, bad_message, &sig).unwrap());
     }
 
-    fn randomize_and_verify<S: SignatureScheme>(message: &[u8], randomness: &[u8]) {
-        let rng = &mut test_rng();
-        let parameters = S::setup::<_>(rng).unwrap();
-        let (pk, sk) = S::keygen(&parameters, rng).unwrap();
-        let sig = S::sign(&parameters, &sk, message, rng).unwrap();
-        assert!(S::verify(&parameters, &pk, message, &sig).unwrap());
-        let randomized_pk = S::randomize_public_key(&parameters, &pk, randomness).unwrap();
-        let randomized_sig = S::randomize_signature(&parameters, &sig, randomness).unwrap();
-        assert!(S::verify(&parameters, &randomized_pk, &message, &randomized_sig).unwrap());
-    }
-
     #[test]
     fn schnorr_signature_test() {
         let message = "Hi, I am a Schnorr signature!";
-        let rng = &mut test_rng();
         sign_and_verify::<schnorr::Schnorr<JubJub, Blake2s>>(message.as_bytes());
         failed_verification::<schnorr::Schnorr<JubJub, Blake2s>>(
             message.as_bytes(),
             "Bad message".as_bytes(),
-        );
-        let random_scalar = to_bytes!(<JubJub as Group>::ScalarField::rand(rng)).unwrap();
-        randomize_and_verify::<schnorr::Schnorr<JubJub, Blake2s>>(
-            message.as_bytes(),
-            &random_scalar.as_slice(),
         );
     }
 }

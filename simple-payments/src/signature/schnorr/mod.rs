@@ -1,6 +1,6 @@
-use ark_crypto_primitives::{CryptoError, Error, SignatureScheme, Vec};
+use ark_crypto_primitives::{CryptoError, Error};
+use super::SignatureScheme;
 use ark_crypto_primitives::{crh::pedersen::CRH};
-use ark_crypto_primitives::{commitment::pedersen::CRH};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{
     bytes::ToBytes,
@@ -9,11 +9,13 @@ use ark_ff::{
 };
 use ark_std::io::{Result as IoResult, Write};
 use ark_std::rand::Rng;
-use ark_std::{hash::Hash, marker::PhantomData};
+use ark_std::{vec::Vec, hash::Hash, marker::PhantomData};
 use digest::Digest;
 
-#[cfg(feature = "r1cs")]
-pub mod constraints;
+extern crate derivative;
+use derivative::Derivative;
+// #[cfg(feature = "r1cs")]
+// pub mod constraints;
 
 pub struct Schnorr<C: ProjectiveCurve, D: Digest> {
     _group: PhantomData<C>,
@@ -57,14 +59,14 @@ where
     type Signature = Signature<C>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
-        let setup_time = start_timer!(|| "SchnorrSig::Setup");
+        // let setup_time = start_timer!(|| "SchnorrSig::Setup");
 
         let salt = None;
         // This is set to false for better consistency with constraints
         let ensure_verifier_randomness_unbiased = false;
         let generator = C::prime_subgroup_generator().into();
 
-        end_timer!(setup_time);
+        // end_timer!(setup_time);
         Ok(Parameters {
             _hash: PhantomData,
             generator,
@@ -77,14 +79,14 @@ where
         parameters: &Self::Parameters,
         rng: &mut R,
     ) -> Result<(Self::PublicKey, Self::SecretKey), Error> {
-        let keygen_time = start_timer!(|| "SchnorrSig::KeyGen");
+        // let keygen_time = start_timer!(|| "SchnorrSig::KeyGen");
 
         // Secret is a random scalar x
         // the pubkey is y = xG
         let secret_key = C::ScalarField::rand(rng);
         let public_key = parameters.generator.mul(secret_key).into();
 
-        end_timer!(keygen_time);
+        // end_timer!(keygen_time);
         Ok((public_key, SecretKey(secret_key)))
     }
 
@@ -94,7 +96,7 @@ where
         message: &[u8],
         rng: &mut R,
     ) -> Result<Self::Signature, Error> {
-        let sign_time = start_timer!(|| "SchnorrSig::Sign");
+        // let sign_time = start_timer!(|| "SchnorrSig::Sign");
         // (k, e);
         let (random_scalar, verifier_challenge) = loop {
             // Sample a random scalar `k` from the prime scalar field.
@@ -139,7 +141,7 @@ where
             verifier_challenge,
         };
 
-        end_timer!(sign_time);
+        // end_timer!(sign_time);
         Ok(signature)
     }
 
@@ -149,7 +151,7 @@ where
         message: &[u8],
         signature: &Self::Signature,
     ) -> Result<bool, Error> {
-        let verify_time = start_timer!(|| "SchnorrSig::Verify");
+        // let verify_time = start_timer!(|| "SchnorrSig::Verify");
 
         let Signature {
             prover_response,
@@ -164,7 +166,7 @@ where
         // kG = sG + eY
         // so we first solve for kG.
         let mut claimed_prover_commitment = parameters.generator.mul(*prover_response);
-        let public_key_times_verifier_challenge = pk.mul(&verifier_challenge);
+        let public_key_times_verifier_challenge = pk.mul(verifier_challenge);
         claimed_prover_commitment += &public_key_times_verifier_challenge;
         let claimed_prover_commitment = claimed_prover_commitment.into_affine();
 
@@ -184,7 +186,7 @@ where
         } else {
             return Ok(false);
         };
-        end_timer!(verify_time);
+        // end_timer!(verify_time);
         // The signature is valid iff the computed verifier challenge is the same as the one
         // provided in the signature
         Ok(verifier_challenge == obtained_verifier_challenge)
