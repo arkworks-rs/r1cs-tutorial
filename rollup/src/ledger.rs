@@ -1,13 +1,15 @@
 use crate::ConstraintF;
+use ark_crypto_primitives::crh::injective_map::constraints::{
+    PedersenCRHCompressorGadget, TECompressorGadget,
+};
 use ark_crypto_primitives::crh::{
+    constraints::{CRHGadget, TwoToOneCRHGadget},
     injective_map::TECompressor,
-    constraints::{TwoToOneCRHGadget, CRHGadget},
     pedersen, TwoToOneCRH, CRH,
 };
-use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective};
-use ark_crypto_primitives::merkle_tree::{self, MerkleTree};
 use ark_crypto_primitives::merkle_tree::constraints::PathVar;
-use ark_crypto_primitives::crh::injective_map::constraints::{PedersenCRHCompressorGadget, TECompressorGadget};
+use ark_crypto_primitives::merkle_tree::{self, MerkleTree};
+use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective};
 use ark_r1cs_std::bits::uint64::UInt64;
 use ark_r1cs_std::prelude::*;
 use ark_relations::r1cs::{Namespace, SynthesisError};
@@ -58,10 +60,12 @@ pub type LeafHashGadget = PedersenCRHCompressorGadget<
     TECompressorGadget,
 >;
 
-pub type AccRootVar = <TwoToOneHashGadget as TwoToOneCRHGadget<TwoToOneHash, ConstraintF>>::OutputVar;
+pub type AccRootVar =
+    <TwoToOneHashGadget as TwoToOneCRHGadget<TwoToOneHash, ConstraintF>>::OutputVar;
 pub type AccPathVar = PathVar<MerkleConfig, LeafHashGadget, TwoToOneHashGadget, ConstraintF>;
 pub type LeafHashParamsVar = <LeafHashGadget as CRHGadget<LeafHash, ConstraintF>>::ParametersVar;
-pub type TwoToOneHashParamsVar = <TwoToOneHashGadget as TwoToOneCRHGadget<TwoToOneHash, ConstraintF>>::ParametersVar;
+pub type TwoToOneHashParamsVar =
+    <TwoToOneHashGadget as TwoToOneCRHGadget<TwoToOneHash, ConstraintF>>::ParametersVar;
 
 /// The parameters that are used in transaction creation and validation.
 pub struct ParametersVar {

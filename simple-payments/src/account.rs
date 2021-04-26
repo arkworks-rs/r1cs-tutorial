@@ -1,6 +1,6 @@
-use ark_ed_on_bls12_381::EdwardsProjective;
-use ark_crypto_primitives::signature::schnorr;
 use crate::ledger::*;
+use ark_crypto_primitives::signature::schnorr;
+use ark_ed_on_bls12_381::EdwardsProjective;
 
 /// Account public key used to verify transaction signatures.
 pub type AccountPublicKey = schnorr::PublicKey<EdwardsProjective>;
@@ -31,7 +31,7 @@ pub struct AccountInformation {
     /// The account public key.
     pub public_key: AccountPublicKey,
     /// The balance associated with this this account.
-    pub balance: Amount
+    pub balance: Amount,
 }
 
 impl AccountInformation {

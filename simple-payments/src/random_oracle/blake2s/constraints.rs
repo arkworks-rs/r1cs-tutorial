@@ -1,11 +1,9 @@
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use crate::random_oracle::{blake2s, RandomOracleGadget};
 use ark_crypto_primitives::prf::blake2s::constraints::{evaluate_blake2s, OutputVar};
-use ark_std::vec::Vec;
-use crate::{
-    random_oracle::{blake2s, RandomOracleGadget},
-};
 use ark_ff::{Field, PrimeField};
 use ark_r1cs_std::prelude::*;
+use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_std::vec::Vec;
 
 use core::borrow::Borrow;
 
@@ -50,11 +48,8 @@ impl<ConstraintF: Field> AllocVar<(), ConstraintF> for ParametersVar {
 #[cfg(test)]
 mod test {
     use crate::random_oracle::{
-        blake2s::{
-            constraints::{ROGadget},
-            RO,
-        },
-        RandomOracleGadget, RandomOracle,
+        blake2s::{constraints::ROGadget, RO},
+        RandomOracle, RandomOracleGadget,
     };
     use ark_ed_on_bls12_381::Fq as Fr;
     use ark_r1cs_std::prelude::*;
@@ -83,11 +78,9 @@ mod test {
                 || Ok(&parameters),
             )
             .unwrap();
-        let result_var = <TestROGadget as RandomOracleGadget<TestRO, Fr>>::evaluate(
-            &parameters_var,
-            &input_var,
-        )
-        .unwrap();
+        let result_var =
+            <TestROGadget as RandomOracleGadget<TestRO, Fr>>::evaluate(&parameters_var, &input_var)
+                .unwrap();
 
         for i in 0..32 {
             assert_eq!(primitive_result[i], result_var.0[i].value().unwrap());

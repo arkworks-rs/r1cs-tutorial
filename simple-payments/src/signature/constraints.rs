@@ -37,58 +37,36 @@ pub trait SigRandomizePkGadget<S: SignatureScheme, ConstraintF: Field> {
 
 #[cfg(test)]
 mod test {
-    use crate::signature::{schnorr, *, schnorr::constraints::*};
+    use crate::signature::{schnorr, schnorr::constraints::*, *};
     use ark_ec::group::Group;
-    use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
-    use ark_ed_on_bls12_381::constraints::EdwardsVar as JubJubVar;
-    use ark_ff::{to_bytes, PrimeField};
     use ark_ec::ProjectiveCurve;
-    use ark_std::{test_rng, UniformRand};
-    use blake2::Blake2s;
+    use ark_ed_on_bls12_381::constraints::EdwardsVar as JubJubVar;
+    use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
+    use ark_ff::{to_bytes, PrimeField};
     use ark_r1cs_std::prelude::*;
     use ark_relations::r1cs::ConstraintSystem;
+    use ark_std::{test_rng, UniformRand};
+    use blake2::Blake2s;
 
-    fn sign_and_verify<F: PrimeField, S: SignatureScheme, SG: SigVerifyGadget<S, F>>(message: &[u8]) {
+    fn sign_and_verify<F: PrimeField, S: SignatureScheme, SG: SigVerifyGadget<S, F>>(
+        message: &[u8],
+    ) {
         let rng = &mut test_rng();
         let parameters = S::setup::<_>(rng).unwrap();
         let (pk, sk) = S::keygen(&parameters, rng).unwrap();
         let sig = S::sign(&parameters, &sk, &message, rng).unwrap();
         assert!(S::verify(&parameters, &pk, &message, &sig).unwrap());
 
-
         let cs = ConstraintSystem::<F>::new_ref();
 
-        let parameters_var =
-            SG::ParametersVar::new_constant(
-                cs.clone(),
-                parameters,
-            ).unwrap();
-        let signature_var =
-            SG::SignatureVar::new_witness(
-                cs.clone(),
-                || Ok(&sig),
-            )
-            .unwrap();
-        let pk_var =
-            SG::PublicKeyVar::new_witness(
-                cs.clone(),
-                || Ok(&pk),
-            )
-            .unwrap();
+        let parameters_var = SG::ParametersVar::new_constant(cs.clone(), parameters).unwrap();
+        let signature_var = SG::SignatureVar::new_witness(cs.clone(), || Ok(&sig)).unwrap();
+        let pk_var = SG::PublicKeyVar::new_witness(cs.clone(), || Ok(&pk)).unwrap();
         let mut msg_var = Vec::new();
         for i in 0..message.len() {
-            msg_var.push(UInt8::new_witness(
-                cs.clone(),
-                || Ok(&message[i]),
-            ).unwrap())
+            msg_var.push(UInt8::new_witness(cs.clone(), || Ok(&message[i])).unwrap())
         }
-        let valid_sig_var = SG::verify(
-            &parameters_var,
-            &pk_var,
-            &msg_var,
-            &signature_var,
-        )
-        .unwrap();
+        let valid_sig_var = SG::verify(&parameters_var, &pk_var, &msg_var, &signature_var).unwrap();
 
         valid_sig_var.enforce_equal(&Boolean::<F>::TRUE).unwrap();
         assert!(cs.is_satisfied().unwrap());
@@ -106,8 +84,11 @@ mod test {
     fn schnorr_signature_test() {
         type F = <JubJub as ProjectiveCurve>::BaseField;
         let message = "Hi, I am a Schnorr signature!";
-        sign_and_verify::<F, schnorr::Schnorr<JubJub>, 
-            SchnorrSignatureVerifyGadget<JubJub, JubJubVar>>(message.as_bytes());
+        sign_and_verify::<
+            F,
+            schnorr::Schnorr<JubJub>,
+            SchnorrSignatureVerifyGadget<JubJub, JubJubVar>,
+        >(message.as_bytes());
         failed_verification::<schnorr::Schnorr<JubJub>>(
             message.as_bytes(),
             "Bad message".as_bytes(),

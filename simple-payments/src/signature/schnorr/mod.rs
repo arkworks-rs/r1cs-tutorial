@@ -1,6 +1,6 @@
-use ark_crypto_primitives::{CryptoError, Error};
 use super::SignatureScheme;
-use ark_crypto_primitives::{crh::pedersen::CRH};
+use ark_crypto_primitives::crh::pedersen::CRH;
+use ark_crypto_primitives::{CryptoError, Error};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{
     bytes::ToBytes,
@@ -9,7 +9,7 @@ use ark_ff::{
 };
 use ark_std::io::{Result as IoResult, Write};
 use ark_std::rand::Rng;
-use ark_std::{vec::Vec, hash::Hash, marker::PhantomData};
+use ark_std::{hash::Hash, marker::PhantomData, vec::Vec};
 use blake2::Blake2s;
 use digest::Digest;
 
@@ -88,7 +88,13 @@ where
         let public_key = parameters.generator.mul(secret_key).into();
 
         // end_timer!(keygen_time);
-        Ok((public_key, SecretKey{secret_key, public_key}))
+        Ok((
+            public_key,
+            SecretKey {
+                secret_key,
+                public_key,
+            },
+        ))
     }
 
     fn sign<R: Rng>(
@@ -133,8 +139,7 @@ where
             }
         };
 
-        let verifier_challenge_fe =
-            C::ScalarField::from_random_bytes(&verifier_challenge).unwrap();
+        let verifier_challenge_fe = C::ScalarField::from_random_bytes(&verifier_challenge).unwrap();
 
         // k - xe;
         let prover_response = random_scalar - (verifier_challenge_fe * sk.secret_key);

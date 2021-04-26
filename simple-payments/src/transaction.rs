@@ -1,9 +1,12 @@
+use crate::account::{AccountId, AccountPublicKey, AccountSecretKey};
+use crate::ledger::{self, Amount};
+use ark_crypto_primitives::signature::{
+    schnorr::{self, Schnorr},
+    SignatureScheme,
+};
+use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_std::rand::Rng;
 use blake2::Blake2s;
-use ark_ed_on_bls12_381::EdwardsProjective;
-use ark_crypto_primitives::signature::{SignatureScheme, schnorr::{self, Schnorr}};
-use crate::ledger::{self, Amount};
-use crate::account::{AccountPublicKey, AccountId, AccountSecretKey};
 
 /// Transaction transferring some amount from one account to another.
 #[derive(Clone, Debug)]
@@ -24,7 +27,7 @@ impl Transaction {
     fn verify_signature(
         &self,
         pp: &schnorr::Parameters<EdwardsProjective, Blake2s>,
-        pub_key: &AccountPublicKey
+        pub_key: &AccountPublicKey,
     ) -> bool {
         // The authorized message consists of
         // (SenderAccId || SenderPubKey || RecipientAccId || RecipientPubKey || Amount)
@@ -41,18 +44,23 @@ impl Transaction {
     /// 2. Verify that the sender's account has sufficient balance to finance
     /// the transaction.
     /// 3. Verify that the recipient's account exists.
-    pub fn validate(
-        &self,
-        parameters: &ledger::Parameters,
-        state: &ledger::State
-    ) -> bool {
+    pub fn validate(&self, parameters: &ledger::Parameters, state: &ledger::State) -> bool {
         // Lookup public key corresponding to sender ID
         if let Some(sender_acc_info) = state.id_to_account_info.get(&self.sender) {
             let mut result = true;
             // Check that the account_info exists in the Merkle tree.
             result &= {
-                let path = state.account_merkle_tree.generate_proof(self.sender.0 as usize).expect("path should exist");
-                path.verify(&parameters.leaf_crh_params, &parameters.two_to_one_crh_params, &state.account_merkle_tree.root(), &sender_acc_info.to_bytes_le()).unwrap()
+                let path = state
+                    .account_merkle_tree
+                    .generate_proof(self.sender.0 as usize)
+                    .expect("path should exist");
+                path.verify(
+                    &parameters.leaf_crh_params,
+                    &parameters.two_to_one_crh_params,
+                    &state.account_merkle_tree.root(),
+                    &sender_acc_info.to_bytes_le(),
+                )
+                .unwrap()
             };
             // Verify the signature against the sender pubkey.
             result &= self.verify_signature(&parameters.sig_params, &sender_acc_info.public_key);
@@ -89,7 +97,6 @@ impl Transaction {
         }
     }
 }
-
 
 // Ideas to make exercises more interesting/complex:
 // 1. Add fees

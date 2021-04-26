@@ -1,13 +1,13 @@
+use crate::account::AccountInformationVar;
+use crate::ledger::*;
+use crate::ConstraintF;
+use ark_r1cs_std::prelude::*;
+use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use ark_simple_payments::{
-    ledger::{AccRoot, State, Parameters, AccPath},
     account::AccountInformation,
+    ledger::{AccPath, AccRoot, Parameters, State},
     transaction::Transaction,
 };
-use crate::ConstraintF;
-use crate::ledger::*;
-use crate::account::AccountInformationVar;
-use ark_relations::r1cs::{ConstraintSystemRef, ConstraintSynthesizer, SynthesisError};
-use ark_r1cs_std::prelude::*;
 
 pub struct Rollup<const NUM_TX: usize> {
     /// The ledger parameters.
@@ -33,7 +33,7 @@ pub struct Rollup<const NUM_TX: usize> {
 }
 
 impl<const NUM_TX: usize> Rollup<NUM_TX> {
-    pub fn new_empty(ledger_params: Parameters,) -> Self {
+    pub fn new_empty(ledger_params: Parameters) -> Self {
         Self {
             ledger_params,
             initial_root: None,
@@ -46,7 +46,11 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
         }
     }
 
-    pub fn only_initial_and_final_roots(ledger_params: Parameters, initial_root: AccRoot, final_root: AccRoot) -> Self {
+    pub fn only_initial_and_final_roots(
+        ledger_params: Parameters,
+        initial_root: AccRoot,
+        final_root: AccRoot,
+    ) -> Self {
         Self {
             ledger_params,
             initial_root: Some(initial_root),
@@ -56,14 +60,13 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
             recv_pre_tx_info_and_path: None,
             pre_tx_roots: None,
             post_tx_roots: None,
-
         }
     }
 
     pub fn with_state_and_transactions(
         ledger_params: Parameters,
         transactions: &[Transaction],
-        state: &mut State
+        state: &mut State,
     ) -> Option<Self> {
         assert_eq!(transactions.len(), NUM_TX);
         let initial_root = Some(state.root());
@@ -76,9 +79,15 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
             let recipient_id = tx.recipient;
             let pre_tx_root = state.root();
             let sender_pre_acc_info = state.id_to_account_info.get(&sender_id)?.clone();
-            let sender_pre_path = state.account_merkle_tree.generate_proof(sender_id.0 as usize).unwrap();
+            let sender_pre_path = state
+                .account_merkle_tree
+                .generate_proof(sender_id.0 as usize)
+                .unwrap();
             let recipient_pre_acc_info = state.id_to_account_info.get(&recipient_id)?.clone();
-            let recipient_pre_path = state.account_merkle_tree.generate_proof(recipient_id.0 as usize).unwrap();
+            let recipient_pre_path = state
+                .account_merkle_tree
+                .generate_proof(recipient_id.0 as usize)
+                .unwrap();
 
             state.apply_transaction(&ledger_params, tx)?;
             let post_tx_root = state.root();
@@ -103,20 +112,24 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
 }
 
 impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> {
-    fn generate_constraints(self, cs: ConstraintSystemRef<ConstraintF>) -> Result<(), SynthesisError> {
+    fn generate_constraints(
+        self,
+        cs: ConstraintSystemRef<ConstraintF>,
+    ) -> Result<(), SynthesisError> {
         // Declare the parameters as constants.
-        let ledger_params = ParametersVar::new_constant(ark_relations::ns!(cs, "Ledger parameters"), &self.ledger_params)?;
-        // Declare the initial root as a public input.
-        let initial_root = AccRootVar::new_input(
-            ark_relations::ns!(cs, "Initial root"),
-            || self.initial_root.ok_or(SynthesisError::AssignmentMissing)
+        let ledger_params = ParametersVar::new_constant(
+            ark_relations::ns!(cs, "Ledger parameters"),
+            &self.ledger_params,
         )?;
+        // Declare the initial root as a public input.
+        let initial_root = AccRootVar::new_input(ark_relations::ns!(cs, "Initial root"), || {
+            self.initial_root.ok_or(SynthesisError::AssignmentMissing)
+        })?;
 
         // Declare the final root as a public input.
-        let final_root = AccRootVar::new_input(
-            ark_relations::ns!(cs, "Final root"),
-            || self.final_root.ok_or(SynthesisError::AssignmentMissing)
-        )?;
+        let final_root = AccRootVar::new_input(ark_relations::ns!(cs, "Final root"), || {
+            self.final_root.ok_or(SynthesisError::AssignmentMissing)
+        })?;
         let mut prev_root = initial_root;
 
         for i in 0..NUM_TX {
@@ -130,58 +143,57 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
 
             // Let's declare all these things!
 
-            let tx = TransactionVar::new_witness(
-                ark_relations::ns!(cs, "Transaction"),
-                || tx.ok_or(SynthesisError::AssignmentMissing)
-            )?;
+            let tx = TransactionVar::new_witness(ark_relations::ns!(cs, "Transaction"), || {
+                tx.ok_or(SynthesisError::AssignmentMissing)
+            })?;
             // Declare the sender's initial account balance...
             let mut sender_acc_info = AccountInformationVar::new_witness(
                 ark_relations::ns!(cs, "Sender Account Info"),
-                || sender_acc_info.ok_or(SynthesisError::AssignmentMissing)
+                || sender_acc_info.ok_or(SynthesisError::AssignmentMissing),
             )?;
             // ... and corresponding authentication path.
-            let sender_path = AccPathVar::new_witness(
-                ark_relations::ns!(cs, "Sender Path"),
-                || sender_path.ok_or(SynthesisError::AssignmentMissing)
-            )?;
+            let sender_path =
+                AccPathVar::new_witness(ark_relations::ns!(cs, "Sender Path"), || {
+                    sender_path.ok_or(SynthesisError::AssignmentMissing)
+                })?;
             // Declare the recipient's initial account balance...
             let mut recipient_acc_info = AccountInformationVar::new_witness(
                 ark_relations::ns!(cs, "Recipient Account Info"),
-                || recipient_acc_info.ok_or(SynthesisError::AssignmentMissing)
+                || recipient_acc_info.ok_or(SynthesisError::AssignmentMissing),
             )?;
             // ... and corresponding authentication path.
-            let recipient_path = AccPathVar::new_witness(
-                ark_relations::ns!(cs, "Recipient Path"),
-                || recipient_path.ok_or(SynthesisError::AssignmentMissing)
-            )?;
+            let recipient_path =
+                AccPathVar::new_witness(ark_relations::ns!(cs, "Recipient Path"), || {
+                    recipient_path.ok_or(SynthesisError::AssignmentMissing)
+                })?;
             // Declare the state root before the transaction...
-            let pre_tx_root = AccRootVar::new_witness(
-                ark_relations::ns!(cs, "Pre-tx Root"),
-                || pre_tx_root.ok_or(SynthesisError::AssignmentMissing)
-            )?;
+            let pre_tx_root =
+                AccRootVar::new_witness(ark_relations::ns!(cs, "Pre-tx Root"), || {
+                    pre_tx_root.ok_or(SynthesisError::AssignmentMissing)
+                })?;
             // ... and after the transaction.
-            let post_tx_root = AccRootVar::new_witness(
-                ark_relations::ns!(cs, "Post-tx Root"),
-                || post_tx_root.ok_or(SynthesisError::AssignmentMissing)
-            )?;
-            // Enforce that the state root after the previous transaction equals 
+            let post_tx_root =
+                AccRootVar::new_witness(ark_relations::ns!(cs, "Post-tx Root"), || {
+                    post_tx_root.ok_or(SynthesisError::AssignmentMissing)
+                })?;
+            // Enforce that the state root after the previous transaction equals
             // the starting state root for this transaction
             prev_root.enforce_equal(&pre_tx_root)?;
 
             // Validate that the transaction signature and amount is correct.
             tx.validate(
-                &ledger_params, 
+                &ledger_params,
                 &sender_acc_info,
                 &sender_path,
                 &recipient_acc_info,
                 &recipient_path,
                 &pre_tx_root,
                 &post_tx_root,
-            )?.enforce_equal(&Boolean::TRUE)?;
-
+            )?
+            .enforce_equal(&Boolean::TRUE)?;
 
             // Set the root for the next transaction.
-            prev_root = post_tx_root; 
+            prev_root = post_tx_root;
         }
         // Check that the final root is consistent with the root computed after
         // applying all state transitions

@@ -17,10 +17,7 @@ impl RandomOracle for RO {
         Ok(())
     }
 
-    fn evaluate(
-        _: &Self::Parameters,
-        input: &[u8],
-    ) -> Result<Self::Output, Error> {
+    fn evaluate(_: &Self::Parameters, input: &[u8]) -> Result<Self::Output, Error> {
         let mut h = b2s::new();
         h.update(input);
         let mut result = [0u8; 32];
