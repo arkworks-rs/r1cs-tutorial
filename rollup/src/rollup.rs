@@ -230,19 +230,7 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
             // TODO: Write this
 
             // Validate that the transaction signature and amount is correct.
-            // TODO: Uncomment this
-            // tx.validate(
-            //     &ledger_params,
-            //     &sender_acc_info,
-            //     &sender_pre_path,
-            //     &sender_post_path,
-            //     &recipient_acc_info,
-            //     &recipient_pre_path,
-            //     &recipient_post_path,
-            //     &pre_tx_root,
-            //     &post_tx_root,
-            // )?
-            // .enforce_equal(&Boolean::TRUE)?;
+            // TODO: implement this!!
 
             // Set the root for the next transaction.
             prev_root = post_tx_root;
