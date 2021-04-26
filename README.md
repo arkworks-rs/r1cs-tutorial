@@ -1,4 +1,4 @@
-<h1 align="center">An Introduction to SNARK Development with arkworks</h1>
+<h1 align="center">Introduction to SNARK Development with arkworks</h1>
 
 In this tutorial, we will learn how to write applications for use with state-of-the-art zkSNARKs using the [`arkworks`](https://arkworks.rs) ecosystem of SNARK libraries.
 
@@ -25,9 +25,15 @@ Because the `arkworks` ecosystem uses the Rust programming language, this tutori
 
 In this tutorial, we will construct a SNARK-based rollup for a simple payments system. In the course of doing so, you will learn how to use `arkworks` libraries for writing circuits, how to debug these circuits for both correctness and performance, and finally how to plug these circuits into zkSNARKs.
 
-### Exercise 1
-### Exercise 2
-### Exercise 3
+First, checkout the `code_erased` branch in the repository. This is what you'll use to complete your exercises.
 
+### Exercise 1: Merkle Tree Example
+Open [`merkle_tree_example/README.md`](merkle_tree_example/README.md).
 
-## Building and running
+### Exercise 2: Validating a single transaction
+
+We'll design a simple circuit for validating a single transaction.
+
+### Exercise 3: Writing a rollup circuit
+
+We'll design a simple circuit for rollups.
