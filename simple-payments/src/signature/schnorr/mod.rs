@@ -10,6 +10,7 @@ use ark_ff::{
 use ark_std::io::{Result as IoResult, Write};
 use ark_std::rand::Rng;
 use ark_std::{vec::Vec, hash::Hash, marker::PhantomData};
+use blake2::Blake2s;
 use digest::Digest;
 
 extern crate derivative;
@@ -17,15 +18,13 @@ use derivative::Derivative;
 // #[cfg(feature = "r1cs")]
 // pub mod constraints;
 
-pub struct Schnorr<C: ProjectiveCurve, D: Digest> {
+pub struct Schnorr<C: ProjectiveCurve> {
     _group: PhantomData<C>,
-    _hash: PhantomData<D>,
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: ProjectiveCurve, H: Digest"), Debug)]
-pub struct Parameters<C: ProjectiveCurve, H: Digest> {
-    _hash: PhantomData<H>,
+#[derivative(Clone(bound = "C: ProjectiveCurve"), Debug)]
+pub struct Parameters<C: ProjectiveCurve> {
     pub generator: C::Affine,
     pub salt: Option<[u8; 32]>,
     pub ensure_verifier_randomness_unbiased: bool,
@@ -52,16 +51,16 @@ pub struct Signature<C: ProjectiveCurve> {
     pub verifier_challenge: [u8; 32],
 }
 
-impl<C: ProjectiveCurve + Hash, D: Digest + Send + Sync> SignatureScheme for Schnorr<C, D>
+impl<C: ProjectiveCurve + Hash> SignatureScheme for Schnorr<C>
 where
     C::ScalarField: PrimeField,
 {
-    type Parameters = Parameters<C, D>;
+    type Parameters = Parameters<C>;
     type PublicKey = PublicKey<C>;
     type SecretKey = SecretKey<C>;
     type Signature = Signature<C>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error> {
+    fn setup<R: Rng>(_rng: &mut R) -> Result<Self::Parameters, Error> {
         // let setup_time = start_timer!(|| "SchnorrSig::Setup");
 
         let salt = None;
@@ -71,7 +70,6 @@ where
 
         // end_timer!(setup_time);
         Ok(Parameters {
-            _hash: PhantomData,
             generator,
             salt,
             ensure_verifier_randomness_unbiased,
@@ -118,7 +116,7 @@ where
             hash_input.extend_from_slice(&to_bytes![prover_commitment]?);
             hash_input.extend_from_slice(message);
 
-            let hash_digest = D::digest(&hash_input);
+            let hash_digest = Blake2s::digest(&hash_input);
             assert!(hash_digest.len() >= 32);
             let mut verifier_challenge = [0u8; 32];
             verifier_challenge.copy_from_slice(&hash_digest);
@@ -185,7 +183,7 @@ where
 
         // cast the hash output to get e
         let obtained_verifier_challenge = if let Some(obtained_verifier_challenge) =
-            C::ScalarField::from_random_bytes(&D::digest(&hash_input))
+            C::ScalarField::from_random_bytes(&Blake2s::digest(&hash_input))
         {
             obtained_verifier_challenge
         } else {
@@ -209,8 +207,8 @@ pub fn bytes_to_bits(bytes: &[u8]) -> Vec<bool> {
     bits
 }
 
-impl<ConstraintF: Field, C: ProjectiveCurve + ToConstraintField<ConstraintF>, D: Digest>
-    ToConstraintField<ConstraintF> for Parameters<C, D>
+impl<ConstraintF: Field, C: ProjectiveCurve + ToConstraintField<ConstraintF>>
+    ToConstraintField<ConstraintF> for Parameters<C>
 {
     #[inline]
     fn to_field_elements(&self) -> Option<Vec<ConstraintF>> {
