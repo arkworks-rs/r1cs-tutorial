@@ -24,7 +24,7 @@ If the foregoing checks pass, the transaction can be applied by updating the res
 ## Batch verification
 
 SNARK proofs of validity of a batch of transactions are one way to increase the throughput of blockchains while also reducing the size of the blockchain. At a high level, the circuit for batch verification works as follows:
-* Public input: initial and final state roots
+* Public input: initial (pre-transaction application) and final (post-tx application) state roots
 * Private inputs: transactions
 * For each transaction:
   * Check a Merkle Tree path wrt initial root that demonstrates the existence of the sender's account.
@@ -34,7 +34,3 @@ SNARK proofs of validity of a batch of transactions are one way to increase the 
   * Compute new balances for both the sender and the receiver.
   * Check a Merkle Tree path wrt final root for the new sender balance.
   * Check a Merkle Tree path wrt final root for the new receiver balance.
-
-A block is a list of transactions.
-It is processed by running the circuit for each transaction in order, applying all state updates within the transaction.
-This means that the Merkle tree root for state will update after executing each tx in the block.
