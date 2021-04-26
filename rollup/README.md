@@ -13,6 +13,7 @@ To transfer currency from one account to another, users create transactions, whi
 * The recipient's account exists.
 * The sender's account contains sufficient balance to fund the transaction.
 * The signature is valid with respect to the sender's public key.
+
 To check these conditions, a transaction verifier performs the following steps:
 * Looks up the (PubKey, Balance) tuple in the Merkle tree that corresponds to the sender's ID.
 * Verifies the transaction signature with respect to PubKey.
