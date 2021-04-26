@@ -5,7 +5,7 @@ use ark_crypto_primitives::crh::{
     pedersen, TwoToOneCRH, CRH,
 };
 use ark_crypto_primitives::merkle_tree::{self, MerkleTree, Path};
-use ark_crypto_primitives::signature::{schnorr, SignatureScheme};
+use crate::signature::{schnorr, SignatureScheme};
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_std::rand::Rng;
 use blake2::Blake2s;
@@ -32,7 +32,7 @@ impl Amount {
 /// The parameters that are used in transaction creation and validation.
 #[derive(Clone)]
 pub struct Parameters {
-    pub sig_params: schnorr::Parameters<EdwardsProjective, Blake2s>,
+    pub sig_params: schnorr::Parameters<EdwardsProjective>,
     pub leaf_crh_params: <TwoToOneHash as CRH>::Parameters,
     pub two_to_one_crh_params: <TwoToOneHash as TwoToOneCRH>::Parameters,
 }
