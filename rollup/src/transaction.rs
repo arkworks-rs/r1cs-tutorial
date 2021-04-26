@@ -3,8 +3,7 @@ use blake2::Blake2s;
 use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective};
 use ark_crypto_primitives::signature::{SignatureScheme, schnorr::{self, Schnorr}};
 use ark_crypto_primitives::signature::schnorr::constraints::*;
-use ark_crypto_primitives::merkle_tree::constraints::PathVar;
-use crate::ledger::{self, Amount};
+use crate::ledger::{self, AmountVar, AccRootVar, AccPathVar};
 use crate::account::{AccountPublicKey, AccountId, AccountSecretKey};
 
 /// Transaction transferring some amount from one account to another.
@@ -46,8 +45,8 @@ impl TransactionVar {
         &self,
         parameters: &ledger::ParametersVar,
         claimed_sender_acc_info: &AccountInformationVar,
-        acc_tree_root: &<TwoToOneHashGadget as TwoToOneCRHGadget<TwoToOneHash, ConstraintF>>::OutputVar,
-        claimed_sender_acc_info_mem_proof: &PathVar<MerkleConfig, LeafHashGadget, TwoToOneHashGadget, ConstraintF>,
+        acc_tree_root: &AccRootVar,
+        claimed_sender_acc_info_mem_proof: &AccPathVar,
     ) -> Result<Boolean<ConstraintF>, SynthesisError> {
         // Check merkle tree path for 
         let sender_exists = claimed_sender_acc_info_mem_proof.verify_membership(
