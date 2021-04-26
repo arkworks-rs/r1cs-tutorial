@@ -27,7 +27,6 @@ pub struct Schnorr<C: ProjectiveCurve> {
 pub struct Parameters<C: ProjectiveCurve> {
     pub generator: C::Affine,
     pub salt: Option<[u8; 32]>,
-    pub ensure_verifier_randomness_unbiased: bool,
 }
 
 pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
@@ -64,16 +63,10 @@ where
         // let setup_time = start_timer!(|| "SchnorrSig::Setup");
 
         let salt = None;
-        // This is set to false for better consistency with constraints
-        let ensure_verifier_randomness_unbiased = false;
         let generator = C::prime_subgroup_generator().into();
 
         // end_timer!(setup_time);
-        Ok(Parameters {
-            generator,
-            salt,
-            ensure_verifier_randomness_unbiased,
-        })
+        Ok(Parameters { generator, salt })
     }
 
     fn keygen<R: Rng>(
@@ -105,7 +98,7 @@ where
     ) -> Result<Self::Signature, Error> {
         // let sign_time = start_timer!(|| "SchnorrSig::Sign");
         // (k, e);
-        let (random_scalar, verifier_challenge) = loop {
+        let (random_scalar, verifier_challenge) = {
             // Sample a random scalar `k` from the prime scalar field.
             let random_scalar: C::ScalarField = C::ScalarField::rand(rng);
             // Commit to the random scalar via r := k · G.
@@ -127,19 +120,10 @@ where
             let mut verifier_challenge = [0u8; 32];
             verifier_challenge.copy_from_slice(&hash_digest);
 
-            // In this case, we don't have to worry about the verifier challenge being larger
-            // than the modulus.
-            if !parameters.ensure_verifier_randomness_unbiased {
-                break (random_scalar, verifier_challenge);
-            }
-
-            // We use rejection sampling if this scalar is less than the modulus
-            if C::ScalarField::from_random_bytes(&verifier_challenge) != None {
-                break (random_scalar, verifier_challenge);
-            }
+            (random_scalar, verifier_challenge)
         };
 
-        let verifier_challenge_fe = C::ScalarField::from_random_bytes(&verifier_challenge).unwrap();
+        let verifier_challenge_fe = C::ScalarField::from_le_bytes_mod_order(&verifier_challenge);
 
         // k - xe;
         let prover_response = random_scalar - (verifier_challenge_fe * sk.secret_key);
@@ -164,16 +148,12 @@ where
             prover_response,
             verifier_challenge,
         } = signature;
-        let verifier_challenge_wrapped = C::ScalarField::from_random_bytes(verifier_challenge);
-        if verifier_challenge_wrapped == None {
-            return Ok(false);
-        }
-        let verifier_challenge = verifier_challenge_wrapped.unwrap();
+        let verifier_challenge_fe = C::ScalarField::from_le_bytes_mod_order(verifier_challenge);
         // sG = kG - eY
         // kG = sG + eY
         // so we first solve for kG.
         let mut claimed_prover_commitment = parameters.generator.mul(*prover_response);
-        let public_key_times_verifier_challenge = pk.mul(verifier_challenge);
+        let public_key_times_verifier_challenge = pk.mul(verifier_challenge_fe);
         claimed_prover_commitment += &public_key_times_verifier_challenge;
         let claimed_prover_commitment = claimed_prover_commitment.into_affine();
 
@@ -187,13 +167,7 @@ where
         hash_input.extend_from_slice(&message);
 
         // cast the hash output to get e
-        let obtained_verifier_challenge = if let Some(obtained_verifier_challenge) =
-            C::ScalarField::from_random_bytes(&Blake2s::digest(&hash_input))
-        {
-            obtained_verifier_challenge
-        } else {
-            return Ok(false);
-        };
+        let obtained_verifier_challenge = &Blake2s::digest(&hash_input)[..];
         // end_timer!(verify_time);
         // The signature is valid iff the computed verifier challenge is the same as the one
         // provided in the signature

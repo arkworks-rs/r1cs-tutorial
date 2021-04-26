@@ -5,7 +5,10 @@ use ark_relations::r1cs::ConstraintSystemRef;
 use ark_relations::r1cs::{Namespace, SynthesisError};
 use ark_std::vec::Vec;
 
-use crate::random_oracle::blake2s::{constraints::ROGadget, *};
+use crate::random_oracle::blake2s::{
+    constraints::{ParametersVar as B2SParamsVar, ROGadget},
+    *,
+};
 use crate::random_oracle::RandomOracleGadget;
 use crate::signature::SigVerifyGadget;
 use ark_crypto_primitives::*;
@@ -94,7 +97,6 @@ where
             .pub_key
             .scalar_mul_le(verifier_challenge.to_bits_le()?.iter())?;
         claimed_prover_commitment += &public_key_times_verifier_challenge;
-        let claimed_prover_commitment = claimed_prover_commitment;
 
         let mut hash_input = Vec::new();
         if parameters.salt.is_some() {
@@ -104,14 +106,11 @@ where
         hash_input.extend_from_slice(&claimed_prover_commitment.to_bytes()?);
         hash_input.extend_from_slice(message);
 
-        let parameters_var =
-            <<ROGadget as RandomOracleGadget<_, ConstraintF<C>>>::ParametersVar as AllocVar<
-                (),
-                ConstraintF<C>,
-            >>::new_constant(ConstraintSystemRef::None, ())
-            .unwrap();
-        let obtained_verifier_challenge =
-            ROGadget::evaluate(&parameters_var, &hash_input).unwrap().0;
+        let b2s_params = <B2SParamsVar as AllocVar<_, ConstraintF<C>>>::new_constant(
+            ConstraintSystemRef::None,
+            (),
+        )?;
+        let obtained_verifier_challenge = ROGadget::evaluate(&b2s_params, &hash_input)?.0;
 
         obtained_verifier_challenge.is_eq(&verifier_challenge.to_vec())
     }
