@@ -48,6 +48,11 @@ impl Transaction {
         // Lookup public key corresponding to sender ID
         if let Some(sender_acc_info) = state.id_to_account_info.get(&self.sender) {
             let mut result = true;
+            // Check that the account_info exists in the Merkle tree.
+            result &= {
+                let path = state.account_merkle_tree.generate_proof(self.sender.0 as usize).expect("path should exist");
+                path.verify(&parameters.leaf_crh_params, &parameters.two_to_one_crh_params, &state.account_merkle_tree.root(), &sender_acc_info.to_bytes_le()).unwrap()
+            };
             // Verify the signature against the sender pubkey.
             result &= self.verify_signature(&parameters.sig_params, &sender_acc_info.public_key);
             // assert!(result, "signature verification failed");

@@ -76,12 +76,17 @@ impl merkle_tree::Config for MerkleConfig {
     type TwoToOneHash = TwoToOneHash;
 }
 
+/// A Merkle tree containing account information.
+pub type AccMerkleTree = MerkleTree<MerkleConfig>;
+/// The root of the account Merkle tree.
+pub type AccRoot = <TwoToOneHash as TwoToOneCRH>::Output;
+
 pub struct State {
     /// What is the next available account identifier?
     pub next_available_account: Option<AccountId>,
     /// A merkle tree mapping where the i-th leaf corresponds to the i-th account's
     /// information (= balance and public key).
-    pub account_merkle_tree: MerkleTree<MerkleConfig>,
+    pub account_merkle_tree: AccMerkleTree,
     /// A mapping from an account's identifier to its information (= balance and public key).
     pub id_to_account_info: HashMap<AccountId, AccountInformation>,
     /// A mapping from a public key to an account's identifier.
@@ -105,6 +110,11 @@ impl State {
             id_to_account_info,
             pub_key_to_id,
         }
+    }
+
+    /// Return the root of the account Merkle tree.
+    pub fn root(&self) -> AccRoot {
+        self.account_merkle_tree.root()
     }
 
     /// Create a new account with public key `pub_key`. Returns a fresh account identifier
