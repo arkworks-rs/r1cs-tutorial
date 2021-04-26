@@ -202,4 +202,57 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use ark_simple_payments::ledger::{Amount, Parameters, State};
+    use ark_simple_payments::account::AccountId;
+    use ark_simple_payments::transaction::Transaction;
+    use super::*;
+    use ark_relations::r1cs::{ConstraintSystem, ConstraintSynthesizer};
+
+    fn test_cs<const NUM_TX: usize>(rollup: Rollup<NUM_TX>) -> bool {
+        let cs = ConstraintSystem::new_ref();
+        rollup.generate_constraints(cs.clone()).unwrap();
+        cs.is_satisfied().unwrap()
+    }
+
+    #[test]
+    fn end_to_end() {
+        let mut rng = ark_std::test_rng();
+        let pp = Parameters::sample(&mut rng);
+        let mut state = State::new(32, &pp);
+        // Let's make an account for Alice.
+        let (alice_id, _alice_pk, alice_sk) =
+            state.sample_keys_and_register(&pp, &mut rng).unwrap();
+        // Let's give her some initial balance to start with.
+        state
+            .update_balance(alice_id, Amount(10))
+            .expect("Alice's account should exist");
+        // Let's make an account for Bob.
+        let (bob_id, _bob_pk, bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
+
+        // Alice wants to transfer 5 units to Bob.
+        let tx1 = Transaction::create(&pp, alice_id, bob_id, Amount(5), &alice_sk, &mut rng);
+        assert!(tx1.validate(&pp, &state));
+        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[tx1.clone()], &mut state).unwrap();
+        assert!(test_cs(rollup));
+
+        // Let's try creating invalid transactions:
+        // First, let's try a transaction where the amount is larger than Alice's balance.
+        let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(6), &alice_sk, &mut rng);
+        assert!(!bad_tx.validate(&pp, &state));
+        assert!(matches!(state.apply_transaction(&pp, &bad_tx), None));
+        // Next, let's try a transaction where the signature is incorrect:
+        let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(5), &bob_sk, &mut rng);
+        assert!(!bad_tx.validate(&pp, &state));
+        assert!(matches!(state.apply_transaction(&pp, &bad_tx), None));
+
+        // Finally, let's try a transaction to an non-existant account:
+        let bad_tx =
+            Transaction::create(&pp, alice_id, AccountId(10), Amount(5), &alice_sk, &mut rng);
+        assert!(!bad_tx.validate(&pp, &state));
+        assert!(matches!(state.apply_transaction(&pp, &bad_tx), None));
+    }
+}
 // Optimization ideas: remove `pre_tx_roots` entirely.
