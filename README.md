@@ -5,6 +5,7 @@ In this tutorial, we will learn how to write applications for use with state-of-
 ## Prerequisites
 
 Because the `arkworks` ecosystem uses the Rust programming language, this tutorial assumes some familiarity with the basics of Rust. We also assume basic familiarity with zkSNARK concepts, and in particular with the following terminology:
+
 * Public input/instance: a publicly known object that the verifier can check a zkSNARK proof against. For example, in a proof of membership in a Merkle tree, the Merkle tree root would be a public input.
 * Private input/witness: an object that is known only to the prover, for either efficiency or privacy reasons. In the Merkle tree example, the Merkle tree authentication path would be a private input.
 * Circuit: an encoding of a computation in a way that can be proven using a zkSNARK.
