@@ -198,9 +198,10 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                     sender_pre_path.ok_or(SynthesisError::AssignmentMissing)
                 })?;
             // ... and authentication path after the update.
-            // TODO: Fill in the following
-            // let sender_post_path = ???
-
+            let sender_post_path =
+                AccPathVar::new_witness(ark_relations::ns!(cs, "Sender Post-Path"), || {
+                    sender_post_path.ok_or(SynthesisError::AssignmentMissing)
+                })?;
             // Declare the recipient's initial account balance...
             let recipient_acc_info = AccountInformationVar::new_witness(
                 ark_relations::ns!(cs, "Recipient Account Info"),
@@ -213,9 +214,10 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                 })?;
 
             // ... and authentication path after the update.
-            // TODO: Fill in the following
-            // let recipient_post_path = ???
-
+            let recipient_post_path =
+                AccPathVar::new_witness(ark_relations::ns!(cs, "Recipient Post-Path"), || {
+                    recipient_post_path.ok_or(SynthesisError::AssignmentMissing)
+                })?;
             // Declare the state root before the transaction...
             let pre_tx_root =
                 AccRootVar::new_witness(ark_relations::ns!(cs, "Pre-tx Root"), || {
@@ -229,29 +231,28 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
 
             // Enforce that the state root after the previous transaction equals
             // the starting state root for this transaction
-            // TODO: Write this
+            prev_root.enforce_equal(&pre_tx_root)?; // TODO: FILL IN THE BLANKS
 
             // Validate that the transaction signature and amount is correct.
-            // TODO: Uncomment this
-            // tx.validate(
-            //     &ledger_params,
-            //     &sender_acc_info,
-            //     &sender_pre_path,
-            //     &sender_post_path,
-            //     &recipient_acc_info,
-            //     &recipient_pre_path,
-            //     &recipient_post_path,
-            //     &pre_tx_root,
-            //     &post_tx_root,
-            // )?
-            // .enforce_equal(&Boolean::TRUE)?;
+            tx.validate(
+                &ledger_params,
+                &sender_acc_info,
+                &sender_pre_path,
+                &sender_post_path,
+                &recipient_acc_info,
+                &recipient_pre_path,
+                &recipient_post_path,
+                &pre_tx_root,
+                &post_tx_root,
+            )?
+            .enforce_equal(&Boolean::TRUE)?; // TODO: FILL IN THE BLANKS
 
             // Set the root for the next transaction.
             prev_root = post_tx_root;
         }
         // Check that the final root is consistent with the root computed after
         // applying all state transitions
-        // TODO: implement this
+        prev_root.enforce_equal(&final_root)?; // TODO: FILL IN THE BLANKS
         Ok(())
     }
 }
@@ -423,7 +424,7 @@ mod test {
             .update_balance(alice_id, Amount(1000))
             .expect("Alice's account should exist");
         // Let's make an account for Bob.
-        let (bob_id, _bob_pk, bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
+        let (bob_id, _bob_pk, _bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
 
         let amount_to_send = rng.gen_range(0..200);
 
