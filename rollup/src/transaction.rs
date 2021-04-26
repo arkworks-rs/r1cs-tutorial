@@ -83,25 +83,18 @@ impl TransactionVar {
         // Check that the pre-tx recipient account information is correct with
         // respect to `pre_tx_root`, and that the post-tx recipient account
         // information is correct with respect to `post_tx_root`.
-        let recipient_exists = pre_recipient_path.verify_membership(
-            &parameters.leaf_crh_params,
-            &parameters.two_to_one_crh_params,
-            &pre_root,
-            &pre_recipient_acc_info.to_bytes_le().as_slice(),
-        )?; // TODO: FILL IN THE BLANKS
+        // TODO: FILL IN THE FOLLOWING
+        // let recipient_exists = ???
+        
+        // let recipient_updated_correctly = ???
 
-        let recipient_updated_correctly = post_recipient_path.verify_membership(
-            &parameters.leaf_crh_params,
-            &parameters.two_to_one_crh_params,
-            &post_root,
-            &post_recipient_acc_info.to_bytes_le().as_slice(),
-        )?; // TODO: FILL IN THE BLANKS
-
-        sender_exists
-            .and(&sender_updated_correctly)?
-            .and(&recipient_exists)?
-            .and(&recipient_updated_correctly)?
-            .and(&sig_verifies)
+        // TODO: Uncomment the following
+        // sender_exists
+        //     .and(&sender_updated_correctly)?
+        //     .and(&recipient_exists)?
+        //     .and(&recipient_updated_correctly)?
+        //     .and(&sig_verifies)
+        Err(SynthesisError::Unsatisfiable)
     }
 }
 

@@ -198,10 +198,9 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                     sender_pre_path.ok_or(SynthesisError::AssignmentMissing)
                 })?;
             // ... and authentication path after the update.
-            let sender_post_path =
-                AccPathVar::new_witness(ark_relations::ns!(cs, "Sender Post-Path"), || {
-                    sender_post_path.ok_or(SynthesisError::AssignmentMissing)
-                })?;
+            // TODO: Fill in the following
+            // let sender_post_path = ???
+
             // Declare the recipient's initial account balance...
             let recipient_acc_info = AccountInformationVar::new_witness(
                 ark_relations::ns!(cs, "Recipient Account Info"),
@@ -214,45 +213,43 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
                 })?;
 
             // ... and authentication path after the update.
-            let recipient_post_path =
-                AccPathVar::new_witness(ark_relations::ns!(cs, "Recipient Post-Path"), || {
-                    recipient_post_path.ok_or(SynthesisError::AssignmentMissing)
-                })?;
+            // TODO: Fill in the following
+            // let recipient_post_path = ???
+
             // Declare the state root before the transaction...
             let pre_tx_root =
                 AccRootVar::new_witness(ark_relations::ns!(cs, "Pre-tx Root"), || {
                     pre_tx_root.ok_or(SynthesisError::AssignmentMissing)
                 })?;
             // ... and after the transaction.
-            let post_tx_root =
-                AccRootVar::new_witness(ark_relations::ns!(cs, "Post-tx Root"), || {
-                    post_tx_root.ok_or(SynthesisError::AssignmentMissing)
-                })?;
+            // TODO: Fill in the following
+            // let post_tx_root = ???
 
             // Enforce that the state root after the previous transaction equals
             // the starting state root for this transaction
-            prev_root.enforce_equal(&pre_tx_root)?; // TODO: FILL IN THE BLANKS
+            // TODO: Write this
 
             // Validate that the transaction signature and amount is correct.
-            tx.validate(
-                &ledger_params,
-                &sender_acc_info,
-                &sender_pre_path,
-                &sender_post_path,
-                &recipient_acc_info,
-                &recipient_pre_path,
-                &recipient_post_path,
-                &pre_tx_root,
-                &post_tx_root,
-            )?
-            .enforce_equal(&Boolean::TRUE)?; // TODO: FILL IN THE BLANKS
+            // TODO: Uncomment this
+            // tx.validate(
+            //     &ledger_params,
+            //     &sender_acc_info,
+            //     &sender_pre_path,
+            //     &sender_post_path,
+            //     &recipient_acc_info,
+            //     &recipient_pre_path,
+            //     &recipient_post_path,
+            //     &pre_tx_root,
+            //     &post_tx_root,
+            // )?
+            // .enforce_equal(&Boolean::TRUE)?;
 
             // Set the root for the next transaction.
             prev_root = post_tx_root;
         }
         // Check that the final root is consistent with the root computed after
         // applying all state transitions
-        prev_root.enforce_equal(&final_root)?; // TODO: FILL IN THE BLANKS
+        // TODO: implement this
         Ok(())
     }
 }
