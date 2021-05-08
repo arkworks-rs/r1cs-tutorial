@@ -28,7 +28,7 @@ In this tutorial, we will construct a SNARK-based rollup for a simple payments s
 First, checkout the `main` branch in the repository.
 
 ### Exercise 1: Merkle Tree Example
-Open [`merkle_tree_example/README.md`](./merkle_tree_example/README.md).
+Open [`merkle_tree_example/src/README.md`](./merkle_tree_example/src/README.md).
 
 ### Exercise 2: Validating a single transaction
 
