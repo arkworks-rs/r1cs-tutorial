@@ -1,11 +1,11 @@
 use crate::account::{AccountId, AccountInformation, AccountPublicKey, AccountSecretKey};
+use crate::signature::{schnorr, SignatureScheme};
 use crate::transaction::Transaction;
 use ark_crypto_primitives::crh::{
     injective_map::{PedersenCRHCompressor, TECompressor},
     pedersen, TwoToOneCRH, CRH,
 };
 use ark_crypto_primitives::merkle_tree::{self, MerkleTree, Path};
-use crate::signature::{schnorr, SignatureScheme};
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_std::rand::Rng;
 use std::collections::HashMap;
