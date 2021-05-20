@@ -1,13 +1,15 @@
-use crate::account::{AccountIdVar, AccountPublicKeyVar, AccountInformationVar};
+use crate::account::{AccountIdVar, AccountInformationVar, AccountPublicKeyVar};
 use crate::ledger::{self, AccPathVar, AccRootVar, AmountVar};
+use crate::ConstraintF;
 use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective};
-use ark_simple_payments::signature::schnorr::constraints::{SignatureVar, ParametersVar as SchnorrParamsVar, SchnorrSignatureVerifyGadget};
+use ark_r1cs_std::prelude::*;
+use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_simple_payments::signature::schnorr::constraints::{
+    ParametersVar as SchnorrParamsVar, SchnorrSignatureVerifyGadget, SignatureVar,
+};
 use ark_simple_payments::signature::SigVerifyGadget;
 use ark_simple_payments::transaction::Transaction;
-use ark_relations::r1cs::{Namespace, SynthesisError};
-use ark_r1cs_std::prelude::*;
 use std::borrow::Borrow;
-use crate::ConstraintF;
 
 /// Transaction transferring some amount from one account to another.
 pub struct TransactionVar {
@@ -45,7 +47,21 @@ impl TransactionVar {
     /// 2. Verify that the sender's account has sufficient balance to finance
     /// the transaction.
     /// 3. Verify that the recipient's account exists.
-    #[tracing::instrument(target = "r1cs", skip(self, parameters, pre_sender_acc_info, pre_sender_path, post_sender_path, pre_recipient_acc_info, pre_recipient_path, post_recipient_path, pre_root, post_root))]
+    #[tracing::instrument(
+        target = "r1cs",
+        skip(
+            self,
+            parameters,
+            pre_sender_acc_info,
+            pre_sender_path,
+            post_sender_path,
+            pre_recipient_acc_info,
+            pre_recipient_path,
+            post_recipient_path,
+            pre_root,
+            post_root
+        )
+    )]
     pub fn validate(
         &self,
         parameters: &ledger::ParametersVar,
@@ -66,7 +82,7 @@ impl TransactionVar {
         let mut post_sender_acc_info = pre_sender_acc_info.clone();
         // TODO: Safely subtract amount sent from the sender's balance
         // post_sender_acc_info.balance = ???;
-        
+
         // TODO: Compute the new receiver balance, ensure its overflow safe.
         let mut post_recipient_acc_info = pre_recipient_acc_info.clone();
         // post_recipient_acc_info.balance = ???
@@ -85,7 +101,7 @@ impl TransactionVar {
         // information is correct with respect to `post_tx_root`.
         // TODO: FILL IN THE FOLLOWING
         // let recipient_exists = ???
-        
+
         // let recipient_updated_correctly = ???
 
         // TODO: Uncomment the following

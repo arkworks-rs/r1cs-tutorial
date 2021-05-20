@@ -1,12 +1,10 @@
-use ark_crypto_primitives::crh::{
-    injective_map::{PedersenCRHCompressor, TECompressor},
-    pedersen,
-};
+use ark_crypto_primitives::crh::constraints::{CRHGadget, TwoToOneCRHGadget};
 use ark_crypto_primitives::crh::injective_map::constraints::{
     PedersenCRHCompressorGadget, TECompressorGadget,
 };
 use ark_crypto_primitives::crh::{
-    constraints::{CRHGadget, TwoToOneCRHGadget},
+    injective_map::{PedersenCRHCompressor, TECompressor},
+    pedersen,
 };
 use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective};
 
@@ -16,8 +14,8 @@ pub struct TwoToOneWindow;
 
 // `WINDOW_SIZE * NUM_WINDOWS` = 2 * 256 bits = enough for hashing two outputs.
 impl pedersen::Window for TwoToOneWindow {
-    const WINDOW_SIZE: usize = 128;
-    const NUM_WINDOWS: usize = 4;
+    const WINDOW_SIZE: usize = 4;
+    const NUM_WINDOWS: usize = 128;
 }
 
 pub type LeafHash = PedersenCRHCompressor<EdwardsProjective, TECompressor, LeafWindow>;
@@ -27,8 +25,8 @@ pub struct LeafWindow;
 
 // `WINDOW_SIZE * NUM_WINDOWS` = 2 * 256 bits = enough for hashing two outputs.
 impl pedersen::Window for LeafWindow {
-    const WINDOW_SIZE: usize = 144;
-    const NUM_WINDOWS: usize = 4;
+    const WINDOW_SIZE: usize = 4;
+    const NUM_WINDOWS: usize = 144;
 }
 
 pub type TwoToOneHashGadget = PedersenCRHCompressorGadget<

@@ -1,12 +1,11 @@
-use ark_crypto_primitives::merkle_tree::{Config, MerkleTree, Path};
 use ark_crypto_primitives::crh::TwoToOneCRH;
+use ark_crypto_primitives::merkle_tree::{Config, MerkleTree, Path};
 
 pub mod common;
 use common::*;
 
 mod constraints;
 // mod constraints_test;
-
 
 #[derive(Clone)]
 pub struct MerkleConfig;
@@ -42,20 +41,23 @@ fn test_merkle_tree() {
         &leaf_crh_params,
         &two_to_one_crh_params,
         &[1u8, 2u8, 3u8, 10u8, 9u8, 17u8, 70u8, 45u8], // the i-th entry is the i-th leaf.
-    ).unwrap();
+    )
+    .unwrap();
 
     // Now, let's try to generate a membership proof for the 5th item.
     let proof = tree.generate_proof(4).unwrap(); // we're 0-indexing!
-    // This should be a proof for the membership of a leaf with value 9. Let's check that!
+                                                 // This should be a proof for the membership of a leaf with value 9. Let's check that!
 
     // First, let's get the root we want to verify against:
     let root = tree.root();
     // Next, let's verify the proof!
-    let result = proof.verify(
-        &leaf_crh_params,
-        &two_to_one_crh_params,
-        &root,
-        &[9u8], // The claimed leaf
-    ).unwrap();
+    let result = proof
+        .verify(
+            &leaf_crh_params,
+            &two_to_one_crh_params,
+            &root,
+            &[9u8], // The claimed leaf
+        )
+        .unwrap();
     assert!(result);
 }

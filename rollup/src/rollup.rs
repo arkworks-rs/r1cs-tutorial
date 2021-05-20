@@ -78,7 +78,7 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
         ledger_params: Parameters,
         transactions: &[Transaction],
         state: &mut State,
-        validate_transactions: bool
+        validate_transactions: bool,
     ) -> Option<Self> {
         assert_eq!(transactions.len(), NUM_TX);
         let initial_root = Some(state.root());
@@ -90,7 +90,7 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
         let mut post_tx_roots = Vec::with_capacity(NUM_TX);
         for tx in transactions {
             if !tx.validate(&ledger_params, &*state) && validate_transactions {
-                return None
+                return None;
             }
         }
         for tx in transactions {
@@ -258,12 +258,14 @@ impl<const NUM_TX: usize> ConstraintSynthesizer<ConstraintF> for Rollup<NUM_TX> 
 
 #[cfg(test)]
 mod test {
-    use tracing_subscriber::layer::SubscriberExt;
-    use ark_simple_payments::ledger::{Amount, Parameters, State};
-    use ark_simple_payments::account::AccountId;
-    use ark_simple_payments::transaction::Transaction;
     use super::*;
-    use ark_relations::r1cs::{ConstraintLayer, ConstraintSystem, ConstraintSynthesizer, TracingMode::OnlyConstraints};
+    use ark_relations::r1cs::{
+        ConstraintLayer, ConstraintSynthesizer, ConstraintSystem, TracingMode::OnlyConstraints,
+    };
+    use ark_simple_payments::account::AccountId;
+    use ark_simple_payments::ledger::{Amount, Parameters, State};
+    use ark_simple_payments::transaction::Transaction;
+    use tracing_subscriber::layer::SubscriberExt;
 
     fn test_cs<const NUM_TX: usize>(rollup: Rollup<NUM_TX>) -> bool {
         let mut layer = ConstraintLayer::default();
@@ -298,13 +300,25 @@ mod test {
         let mut temp_state = state.clone();
         let tx1 = Transaction::create(&pp, alice_id, bob_id, Amount(5), &alice_sk, &mut rng);
         assert!(tx1.validate(&pp, &temp_state));
-        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[tx1.clone()], &mut temp_state, true).unwrap();
+        let rollup = Rollup::<1>::with_state_and_transactions(
+            pp.clone(),
+            &[tx1.clone()],
+            &mut temp_state,
+            true,
+        )
+        .unwrap();
         assert!(test_cs(rollup));
 
         let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(5), &bob_sk, &mut rng);
         assert!(!bad_tx.validate(&pp, &temp_state));
         assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
-        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[bad_tx.clone()], &mut temp_state, false).unwrap();
+        let rollup = Rollup::<1>::with_state_and_transactions(
+            pp.clone(),
+            &[bad_tx.clone()],
+            &mut temp_state,
+            false,
+        )
+        .unwrap();
         assert!(!test_cs(rollup));
     }
 
@@ -327,14 +341,36 @@ mod test {
         let mut temp_state = state.clone();
         let tx1 = Transaction::create(&pp, alice_id, bob_id, Amount(5), &alice_sk, &mut rng);
         assert!(tx1.validate(&pp, &temp_state));
-        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[tx1.clone()], &mut temp_state, true).unwrap();
+        let rollup = Rollup::<1>::with_state_and_transactions(
+            pp.clone(),
+            &[tx1.clone()],
+            &mut temp_state,
+            true,
+        )
+        .unwrap();
         assert!(test_cs(rollup));
 
         let mut temp_state = state.clone();
-        let rollup = Rollup::<2>::with_state_and_transactions(pp.clone(), &[tx1.clone(), tx1.clone()], &mut temp_state, true).unwrap();
+        let rollup = Rollup::<2>::with_state_and_transactions(
+            pp.clone(),
+            &[tx1.clone(), tx1.clone()],
+            &mut temp_state,
+            true,
+        )
+        .unwrap();
         assert!(test_cs(rollup));
-        assert_eq!(temp_state.id_to_account_info.get(&alice_id).unwrap().balance, Amount(10));
-        assert_eq!(temp_state.id_to_account_info.get(&bob_id).unwrap().balance, Amount(10));
+        assert_eq!(
+            temp_state
+                .id_to_account_info
+                .get(&alice_id)
+                .unwrap()
+                .balance,
+            Amount(10)
+        );
+        assert_eq!(
+            temp_state.id_to_account_info.get(&bob_id).unwrap().balance,
+            Amount(10)
+        );
 
         // Let's try creating invalid transactions:
         // First, let's try a transaction where the amount is larger than Alice's balance.
@@ -342,7 +378,13 @@ mod test {
         let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(21), &alice_sk, &mut rng);
         assert!(!bad_tx.validate(&pp, &temp_state));
         assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
-        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[bad_tx.clone()], &mut temp_state, false).unwrap();
+        let rollup = Rollup::<1>::with_state_and_transactions(
+            pp.clone(),
+            &[bad_tx.clone()],
+            &mut temp_state,
+            false,
+        )
+        .unwrap();
         assert!(!test_cs(rollup));
 
         // Next, let's try a transaction where the signature is incorrect:
@@ -350,7 +392,13 @@ mod test {
         let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(5), &bob_sk, &mut rng);
         assert!(!bad_tx.validate(&pp, &temp_state));
         assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
-        let rollup = Rollup::<1>::with_state_and_transactions(pp.clone(), &[bad_tx.clone()], &mut temp_state, false).unwrap();
+        let rollup = Rollup::<1>::with_state_and_transactions(
+            pp.clone(),
+            &[bad_tx.clone()],
+            &mut temp_state,
+            false,
+        )
+        .unwrap();
         assert!(!test_cs(rollup));
 
         // Finally, let's try a transaction to an non-existant account:
@@ -362,7 +410,7 @@ mod test {
 
     // Builds a circuit with two txs, using different pubkeys & amounts every time.
     // It returns this circuit
-    fn build_two_tx_circuit() -> Rollup::<2> {
+    fn build_two_tx_circuit() -> Rollup<2> {
         use ark_std::rand::Rng;
         let mut rng = ark_std::test_rng();
         let pp = Parameters::sample(&mut rng);
@@ -381,27 +429,43 @@ mod test {
 
         // Alice wants to transfer amount_to_send units to Bob, and does this twice
         let mut temp_state = state.clone();
-        let tx1 = Transaction::create(&pp, alice_id, bob_id, Amount(amount_to_send), &alice_sk, &mut rng);
-        let rollup = Rollup::<2>::with_state_and_transactions(pp.clone(), &[tx1.clone(), tx1.clone()], &mut temp_state, true).unwrap();
+        let tx1 = Transaction::create(
+            &pp,
+            alice_id,
+            bob_id,
+            Amount(amount_to_send),
+            &alice_sk,
+            &mut rng,
+        );
+        let rollup = Rollup::<2>::with_state_and_transactions(
+            pp.clone(),
+            &[tx1.clone(), tx1.clone()],
+            &mut temp_state,
+            true,
+        )
+        .unwrap();
         rollup
     }
 
     #[test]
     fn snark_verification() {
-        use ark_snark::SNARK;
-        use ark_groth16::Groth16;
         use ark_bls12_381::Bls12_381;
+        use ark_groth16::Groth16;
+        use ark_snark::SNARK;
         // Use a circuit just to generate the circuit
         let circuit_defining_cs = build_two_tx_circuit();
 
         let mut rng = ark_std::test_rng();
-        let (pk, vk) = Groth16::<Bls12_381>::circuit_specific_setup(circuit_defining_cs, &mut rng).unwrap();
+        let (pk, vk) =
+            Groth16::<Bls12_381>::circuit_specific_setup(circuit_defining_cs, &mut rng).unwrap();
 
         // Use the same circuit but with different inputs to verify against
         // This test checks that the SNARK passes on the provided input
         let circuit_to_verify_against = build_two_tx_circuit();
-        let public_input = [circuit_to_verify_against.initial_root.unwrap(), 
-            circuit_to_verify_against.final_root.unwrap()];
+        let public_input = [
+            circuit_to_verify_against.initial_root.unwrap(),
+            circuit_to_verify_against.final_root.unwrap(),
+        ];
 
         let proof = Groth16::prove(&pk, circuit_to_verify_against, &mut rng).unwrap();
         let valid_proof = Groth16::verify(&vk, &public_input, &proof).unwrap();
@@ -411,8 +475,10 @@ mod test {
         // This test checks that the SNARK fails on the wrong input
         let circuit_to_verify_against = build_two_tx_circuit();
         // Error introduced, used the final root twice!
-        let public_input = [circuit_to_verify_against.final_root.unwrap(), 
-            circuit_to_verify_against.final_root.unwrap()];
+        let public_input = [
+            circuit_to_verify_against.final_root.unwrap(),
+            circuit_to_verify_against.final_root.unwrap(),
+        ];
 
         let proof = Groth16::prove(&pk, circuit_to_verify_against, &mut rng).unwrap();
         let valid_proof = Groth16::verify(&vk, &public_input, &proof).unwrap();
