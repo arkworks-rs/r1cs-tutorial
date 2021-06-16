@@ -425,7 +425,7 @@ mod test {
         // Let's make an account for Bob.
         let (bob_id, _bob_pk, bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
 
-        let amount_to_send = rng.gen_range(0, 200);
+        let amount_to_send = rng.gen_range(0..200);
 
         // Alice wants to transfer amount_to_send units to Bob, and does this twice
         let mut temp_state = state.clone();
