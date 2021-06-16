@@ -17,6 +17,6 @@ ark-snark = { version = "^0.3.0", default-features = false }
 
 ark-serialize = { version = "^0.3.0", default-features = false }
 
-ark-crypto-primitives = { version = "0.3", default-features = true, features = [ "r1cs" ] }
+ark-crypto-primitives = { version = "^0.3.0", default-features = true, features = [ "r1cs" ] }
 tracing = { version = "0.1", default-features = false, features = [ "attributes" ] }
 tracing-subscriber = { version = "0.2" }
