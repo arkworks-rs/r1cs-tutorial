@@ -66,7 +66,7 @@ impl ConstraintSynthesizer<ConstraintF> for MerkleTreeVerification {
 
 // Run this test via `cargo test --release test_merkle_tree`.
 #[test]
-fn test_merkle_tree_constraints() {
+fn merkle_tree_constraints_correctness() {
     use ark_relations::r1cs::{ConstraintLayer, ConstraintSystem, TracingMode};
     use tracing_subscriber::layer::SubscriberExt;
 
@@ -127,7 +127,7 @@ fn test_merkle_tree_constraints() {
 // Run this test via `cargo test --release test_merkle_tree_constraints_soundness`.
 // This tests that a given invalid authentication path will fail.
 #[test]
-fn test_merkle_tree_constraints_soundness() {
+fn merkle_tree_constraints_soundness() {
     use ark_relations::r1cs::{ConstraintLayer, ConstraintSystem, TracingMode};
     use tracing_subscriber::layer::SubscriberExt;
 
@@ -174,17 +174,17 @@ fn test_merkle_tree_constraints_soundness() {
         // witness
         authentication_path: Some(proof),
     };
-    // First, some boilerplat that helps with debugging
+    // First, some boilerplate that helps with debugging
     let mut layer = ConstraintLayer::default();
     layer.mode = TracingMode::OnlyConstraints;
     let subscriber = tracing_subscriber::Registry::default().with(layer);
     let _guard = tracing::subscriber::set_default(subscriber);
 
-    // Next, let's make the circuit!
+    // Next, let's make the constraint system!
     let cs = ConstraintSystem::new_ref();
     circuit.generate_constraints(cs.clone()).unwrap();
     // Let's check whether the constraint system is satisfied
     let is_satisfied = cs.is_satisfied().unwrap();
-    // We expec this to fail!
+    // We expect this to fail!
     assert!(!is_satisfied);
 }

@@ -1,5 +1,5 @@
 [package]
-name = "merkle_tree_example"
+name = "merkle-tree-example"
 version = "0.3.0"
 authors = ["arkworks contributors"]
 edition = "2018"

@@ -1,40 +1,31 @@
-# Rollup example
+# SNARK-based batch verification of transactions
 
-In this crate, we build a circuit for proving the validity of a batch of payments in a simple account-based blockchain. This proof of validity is also called a SNARK-based Rollup in the Ethereum community.
-
-## Accounts and state tree
-
-In this chain, an "Account" is a (ID, PubKey, Balance) triple. Upon registration, (PubKey, Balance) is stored in a Merkle tree, at the index specified by the identifier. For simplicity and efficiency, in this tutorial we support only a fixed number of accounts (say, 256).
-
-We are foregoing checking for replay protection (sequence numbers) in this example.
-
-## Tx processing
-
-To transfer currency from one account to another, users create transactions, which contain the sender's ID, the receiver's ID, the transaction amount, and a signature on the foregoing with respect to the sender's secret key. A transaction is valid if:
-* The sender's account exists
-* The recipient's account exists.
-* The sender's account contains sufficient balance to fund the transaction.
-* The signature is valid with respect to the sender's public key.
-
-To check these conditions, a transaction verifier performs the following steps:
-* Looks up the (PubKey, Balance) tuple in the Merkle tree that corresponds to the sender's ID.
-* Verifies the transaction signature with respect to PubKey.
-* Checks that the tx.amount <= Balance.
-* Checks that the Merkle tree contains a path corresponding to the current recipient's ID. 
-
-If the foregoing checks pass, the transaction can be applied by updating the respective balances, and recomputing the Merkle tree.
+SNARK proofs of validity of a batch of transactions are one way increasingly popular to increase the throughput of blockchains while also reducing the size of the blockchain. For example, they are being deployed in the Ethereum community under then name of "rollups". In this crate, we will design a constraint system for proving the validity of a batch of payments in the payment system in `simple-payments`. The high-level specification of this constraint system is defined next.
 
 ## Batch verification
 
-SNARK proofs of validity of a batch of transactions are one way to increase the throughput of blockchains while also reducing the size of the blockchain. At a high level, the circuit for batch verification works as follows:
+At a high level, the constraint system for batch verification works as follows:
 
-* Public input: initial (pre-transaction application) and final (post-tx application) state roots
-* Private inputs: transactions
-* For each transaction:
-  * Check a Merkle Tree path wrt initial root that demonstrates the existence of the sender's account.
-  * Check a Merkle Tree path wrt initial root that demonstrates the existence of the receiver's account.
-  * Verify the signature in the transaction with respect to the sender's public key.
-  * Verify that the sender has sufficient funds.
-  * Compute new balances for both the sender and the receiver.
-  * Check a Merkle Tree path wrt final root for the new sender balance.
-  * Check a Merkle Tree path wrt final root for the new receiver balance.
+* Public input: initial state root (i.e., before applying current batch of transactions) and final state root (i.e., after applying current batch)
+* Private inputs: current batch of transactions
+* Checks:
+
+  For each transaction in the batch, check the validity of applying that transaction:
+  (1) Check a Merkle Tree path wrt initial root that demonstrates the existence of the sender's account.
+  (2) Check a Merkle Tree path wrt initial root that demonstrates the existence of the receiver's account.
+  (3) Verify the signature in the transaction with respect to the sender's public key.
+  (4) Verify that sender.balance >= tx.amont (i.e., sender has sufficient funds).
+  (5) Compute new balances for both the sender and the receiver.
+  (6) Check a Merkle Tree path wrt final root for the new sender balance.
+  (7) Check a Merkle Tree path wrt final root for the new receiver balance.
+
+To make it easier to write out this constraint system, we've provided gadget equivalents of the key data structures from `simple-payments`. Find these via `cargo doc --open --no-deps`.
+
+## Verifying a single transaction
+
+Our first task will be to verify the state transitions involved when applying a single transaction. Go to [`transaction.rs`](./src/transaction.rs) and fill in the blanks in the `validate` method, following the hints there. Use the pseudocode [above](#batch-verification) and the logic in `simple_payments::transaction::Transaction::validate` as guides. To check if your code works, run `cargo test single_tx_validity_test`.
+
+
+## Verifying a batch of transactions
+
+Use the foregoing validation logic to verify a batch of transactions in the `generate_constraints` method in [`rollup.rs#148], and verify that your circuit works via `cargo test end_to_end`, and then test that you can generate a valid proof via `cargo test snark_verification`.

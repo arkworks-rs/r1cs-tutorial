@@ -1,4 +1,4 @@
-<h1 align="center">Introduction to SNARK Development with arkworks</h1>
+<h1 align="center">Introduction to SNARK Development with `arkworks`</h1>
 
 In this tutorial, we will learn how to write applications for use with state-of-the-art zkSNARKs using the [`arkworks`](https://arkworks.rs) ecosystem of SNARK libraries.
 
@@ -13,7 +13,7 @@ Because the `arkworks` ecosystem uses the Rust programming language, this tutori
 
 ## Instructions
 
-1. Ensure that you have the latest version of Rust installed (1.51 at the time of writing).  If you do not already have Rust installed, you can do so via [`rustup`](https://rustup.rs/). Linux users, please note that `arkworks` relies on Rust 1.49, which might be more recent than the Rust version provided by your distribution's package repositories; hence, even if you have installed Rust via your package manager, please install the latest Rust via `rustup`.
+1. Ensure that you have the latest version of Rust installed (1.51 at the time of writing).  If you do not already have Rust installed, you can do so via [`rustup`](https://rustup.rs/). Linux users, please note that `arkworks` relies on Rust 1.51, which might be more recent than the Rust version provided by your distribution's package repositories; hence, even if you have installed Rust via your package manager, please install the latest Rust via `rustup`.
 
 2. Clone this repository via `git clone https://github.com/arkworks-rs/r1cs-tutorial.git`
 
@@ -23,17 +23,20 @@ Because the `arkworks` ecosystem uses the Rust programming language, this tutori
 
 ## Exercises
 
-In this tutorial, we will construct a SNARK-based rollup for a simple payments system. In the course of doing so, you will learn how to use `arkworks` libraries for writing circuits, how to debug these circuits for both correctness and performance, and finally how to plug these circuits into zkSNARKs.
+In this tutorial, we will construct a SNARK-based rollup for a simple payments system. In the course of doing so, you will learn how to use `arkworks` libraries for writing constraint systems, how to debug these circuits for both correctness and performance, and finally how to plug these circuits into zkSNARKs.
 
 First, checkout the `main` branch in the repository.
 
 ### Exercise 1: Merkle Tree Example
-Open [`merkle_tree_example/src/README.md`](./merkle_tree_example/src/README.md).
+We'll design a simple circuit for checking a Merkle tree membership path for a given leaf.
+Open [`merkle-tree-example/README.md`](./merkle-tree-example/README.md).
 
 ### Exercise 2: Validating a single transaction
 
-We'll design a simple circuit for validating a single transaction.
+We'll design a circuit for validating a single transaction in a simple account-based payment system.
+Open [`simple-payments/README.md`](./simple-payments/README.md) to first learn more about the payment system, and then open [`rollup/README.md`](./rollup/README.md) for the instructions for this exercise.
 
 ### Exercise 3: Writing a rollup circuit
 
-We'll design a simple circuit for rollups.
+We'll design a circuit for a rollup for batch verification of transactions in the foregoing payment system.
+Open [`rollup/README.md`](./rollup/README.md) for the instructions for this exercise.
