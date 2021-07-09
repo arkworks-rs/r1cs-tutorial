@@ -19,7 +19,9 @@ Because the `arkworks` ecosystem uses the Rust programming language, this tutori
 
 3. (Optional) While Rust works out of the box with your text editor of choice, using [Visual Studio Code](https://code.visualstudio.com/) along with the [`rust-analyzer`](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer) plugin makes Rust development easier.  
 
-4. Proceed to the exercises below.
+4. (Optional) Join the Telegram channel for [this tutorial](https://t.me/joinchat/4HzYWAYHVfpiODZh) and for the [`arkworks` ecosystem](https://t.me/joinchat/QaIYxIqLScnonTJ4) to ask questions interactively.
+
+5. Proceed to the exercises below.
 
 ## Exercises
 
@@ -40,3 +42,7 @@ Open [`simple-payments/README.md`](./simple-payments/README.md) to first learn m
 
 We'll design a circuit for a rollup for batch verification of transactions in the foregoing payment system.
 Open [`rollup/README.md`](./rollup/README.md) for the instructions for this exercise.
+
+## Solutions
+
+If you get stuck on one of the above exercises, or if you wish to compare your solution with ours, check out the `solutions` branch on this repository.
