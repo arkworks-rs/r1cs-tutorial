@@ -45,4 +45,4 @@ Open [`rollup/README.md`](./rollup/README.md) for the instructions for this exer
 
 ## Solutions
 
-If you get stuck on one of the above exercises, or if you wish to compare your solution with ours, check out the `solutions` branch on this repository.
+If you get stuck on one of the above exercises, or if you wish to compare your solution with ours, check out the [`solutions`](https://github.com/arkworks-rs/r1cs-tutorial/tree/solutions) branch on this repository.
