@@ -30,6 +30,7 @@ In this tutorial, we will construct a SNARK-based rollup for a simple payments s
 First, checkout the `main` branch in the repository.
 
 ### Exercise 1: Merkle Tree Example
+
 We'll design a simple circuit for checking a Merkle tree membership path for a given leaf.
 Open [`merkle-tree-example/README.md`](./merkle-tree-example/src/README.md).
 
