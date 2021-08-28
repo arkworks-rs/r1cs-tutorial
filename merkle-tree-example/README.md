@@ -36,7 +36,7 @@ Let's go over this incantation part-by-part.
 
 We similarly allocate the leaf as a public input variable, and allocate the parameters of the hash as "constants" in the constraint system. This means that these parameters are "baked" into the constraint system when it is created, and changing these parameters would result in a different constraint system. Finally, we allocate the membership path as a private witness variable.
 
-Now, we must  fill in the blanks by addng constraints to check the membership path. Go ahead and follow the hint in `constraints.rs` to complete this task.
+Now, we must  fill in the blanks by adding constraints to check the membership path. Go ahead and follow the hint in `constraints.rs` to complete this task.
 
 ## Testing our constraints
 
