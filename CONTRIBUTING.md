@@ -33,7 +33,7 @@ All other branches should be assumed to be miscellaneous feature development bra
 All downstream users of the library should be using tagged versions of the library pulled from cargo.
 
 ## How to work on a fork
-Please skip this section if you're familiar with contributing to opensource github projects.
+Please skip this section if you're familiar with contributing to open source github projects.
 
 First fork the repo from the github UI, and clone it locally.
 Then in the repo, you want to add the repo you forked from as a new remote. You do this as:

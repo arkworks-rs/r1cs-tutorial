@@ -14,7 +14,7 @@ At a high level, the constraint system for batch verification works as follows:
   (1) Check a Merkle Tree path wrt initial root that demonstrates the existence of the sender's account.
   (2) Check a Merkle Tree path wrt initial root that demonstrates the existence of the receiver's account.
   (3) Verify the signature in the transaction with respect to the sender's public key.
-  (4) Verify that sender.balance >= tx.amont (i.e., sender has sufficient funds).
+  (4) Verify that sender.balance >= tx.amount (i.e., sender has sufficient funds).
   (5) Compute new balances for both the sender and the receiver.
   (6) Check a Merkle Tree path wrt final root for the new sender balance.
   (7) Check a Merkle Tree path wrt final root for the new receiver balance.

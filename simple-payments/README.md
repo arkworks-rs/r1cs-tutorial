@@ -39,6 +39,6 @@ We use a simple custom implementation of Schnorr signatures over the prime order
 Our implementation uses the Merkle tree of [`ark-crypto-primitives`](https://docs.rs/ark-crypto-primitives/0.3.0/ark_crypto_primitives/merkle_tree/index.html). This is the same tree that we saw in the `merkle-tree-example` step. In our system, the concrete underlying hash function is the Pedersen hash function, as implemented in the [`ark-crypto-primitives` crate](https://docs.rs/ark-crypto-primitives/0.3.0/ark_crypto_primitives/crh/pedersen/index.html). This hash is implemented over the prime-order subgroup of the Jubjub curve.
 
 
-## Code walkthrough
+## Code walk-through
 
 To get an overview of important data structures as well as their associated methods, run `cargo doc --open --no-deps`.
