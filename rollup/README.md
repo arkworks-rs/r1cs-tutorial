@@ -23,9 +23,9 @@ To make it easier to write out this constraint system, we've provided gadget equ
 
 ## Verifying a single transaction
 
-Our first task will be to verify the state transitions involved when applying a single transaction. Go to [`transaction.rs`](./src/transaction.rs) and fill in the blanks in the `validate` method, following the hints there. Use the pseudocode [above](#batch-verification) and the logic in `simple_payments::transaction::Transaction::validate` as guides. To check if your code works, run `cargo test single_tx_validity_test`.
+Our first task will be to verify the state transitions involved when applying a single transaction. Go to [`transaction.rs`](./src/transaction.rs) and fill in the blanks in the `validate` method, following the hints there. Use the pseudocode [above](#batch-verification) and the logic in `simple_payments::transaction::Transaction::validate` as guides. To check if your code works, run `cargo test unary_rollup_validity_test`.
 
 
 ## Verifying a batch of transactions
 
-Use the foregoing validation logic to verify a batch of transactions in the `generate_constraints` method in [`rollup.rs#148`], and verify that your circuit works via `cargo test end_to_end`, and then test that you can generate a valid proof via `cargo test snark_verification`.
+Use the foregoing validation logic to verify a batch of transactions in the `generate_constraints` method in [`rollup.rs#148`], and verify that your circuit works via `cargo test single_tx_validity_test` and `cargo test end_to_end`, and then test that you can generate a valid proof via `cargo test snark_verification`.
