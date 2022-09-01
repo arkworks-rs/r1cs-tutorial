@@ -162,7 +162,7 @@ where
         }
         hash_input.extend_from_slice(&to_bytes![pk]?);
         hash_input.extend_from_slice(&to_bytes![claimed_prover_commitment]?);
-        hash_input.extend_from_slice(&message);
+        hash_input.extend_from_slice(message);
 
         // cast the hash output to get e
         let obtained_verifier_challenge = &Blake2s::digest(&hash_input)[..];

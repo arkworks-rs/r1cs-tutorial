@@ -97,12 +97,12 @@ impl<const NUM_TX: usize> Rollup<NUM_TX> {
             let sender_id = tx.sender;
             let recipient_id = tx.recipient;
             let pre_tx_root = state.root();
-            let sender_pre_acc_info = state.id_to_account_info.get(&sender_id)?.clone();
+            let sender_pre_acc_info = *state.id_to_account_info.get(&sender_id)?;
             let sender_pre_path = state
                 .account_merkle_tree
                 .generate_proof(sender_id.0 as usize)
                 .unwrap();
-            let recipient_pre_acc_info = state.id_to_account_info.get(&recipient_id)?.clone();
+            let recipient_pre_acc_info = *state.id_to_account_info.get(&recipient_id)?;
             let recipient_pre_path = state
                 .account_merkle_tree
                 .generate_proof(recipient_id.0 as usize)

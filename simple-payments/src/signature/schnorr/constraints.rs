@@ -130,7 +130,7 @@ where
                 for i in 0..32 {
                     constraint_salt.push(UInt8::<ConstraintF<C>>::new_variable(
                         cs.clone(),
-                        || Ok(native_salt.unwrap()[i].clone()),
+                        || Ok(native_salt.unwrap()[i]),
                         mode,
                     )?);
                 }
@@ -186,17 +186,17 @@ where
             let challenge_bytes = val.borrow().verifier_challenge;
             let mut prover_response = Vec::<UInt8<ConstraintF<C>>>::new();
             let mut verifier_challenge = Vec::<UInt8<ConstraintF<C>>>::new();
-            for i in 0..response_bytes.len() {
+            for byte in &response_bytes {
                 prover_response.push(UInt8::<ConstraintF<C>>::new_variable(
                     cs.clone(),
-                    || Ok(response_bytes[i].clone()),
+                    || Ok(byte),
                     mode,
                 )?);
             }
-            for i in 0..32 {
+            for byte in &challenge_bytes {
                 verifier_challenge.push(UInt8::<ConstraintF<C>>::new_variable(
                     cs.clone(),
-                    || Ok(challenge_bytes[i].clone()),
+                    || Ok(byte),
                     mode,
                 )?);
             }

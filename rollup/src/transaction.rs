@@ -37,7 +37,7 @@ impl TransactionVar {
         let mut message = self.sender.to_bytes_le();
         message.extend(self.recipient.to_bytes_le());
         message.extend(self.amount.to_bytes_le());
-        SchnorrSignatureVerifyGadget::verify(&pp, &pub_key, &message, &self.signature)
+        SchnorrSignatureVerifyGadget::verify(pp, pub_key, &message, &self.signature)
     }
 
     /// Check that the transaction is valid for the given ledger state. This checks
@@ -47,6 +47,7 @@ impl TransactionVar {
     /// 2. Verify that the sender's account has sufficient balance to finance
     /// the transaction.
     /// 3. Verify that the recipient's account exists.
+    #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(
         target = "r1cs",
         skip(
