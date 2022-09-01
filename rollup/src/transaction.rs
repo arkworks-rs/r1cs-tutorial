@@ -1,9 +1,11 @@
 use crate::account::{AccountIdVar, AccountInformationVar, AccountPublicKeyVar};
-use crate::ledger::{self, AccPathVar, AccRootVar, AmountVar};
+use crate::ledger::{self, AccPathVar, AccRootVar, AmountVar, ParametersVar};
 use crate::ConstraintF;
 use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsProjective};
 use ark_r1cs_std::prelude::*;
-use ark_relations::r1cs::{Namespace, SynthesisError};
+use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, Namespace, SynthesisError};
+use ark_simple_payments::account::AccountInformation;
+use ark_simple_payments::ledger::{AccPath, AccRoot, Parameters, State};
 use ark_simple_payments::signature::schnorr::constraints::{
     ParametersVar as SchnorrParamsVar, SchnorrSignatureVerifyGadget, SignatureVar,
 };
@@ -136,5 +138,225 @@ impl AllocVar<Transaction, ConstraintF> for TransactionVar {
                 signature,
             })
         })
+    }
+}
+
+pub struct UnaryRollup {
+    /// The ledger parameters.
+    pub ledger_params: Parameters,
+    /// The Merkle tree root before applying this batch of transactions.
+    pub initial_root: AccRoot,
+    /// The Merkle tree root after applying this batch of transactions.
+    pub final_root: AccRoot,
+    /// The current batch of transactions.
+    pub transaction: Transaction,
+    /// The sender's account information *before* applying the transaction.
+    pub sender_acc_info: AccountInformation,
+    /// The sender's authentication path, *before* applying the transaction.
+    pub sender_pre_path: AccPath,
+    /// The authentication path corresponding to the sender's account information *after* applying
+    /// the transactions.
+    pub sender_post_path: AccPath,
+    /// The recipient's account information *before* applying the transaction.
+    pub recv_acc_info: AccountInformation,
+    /// The recipient's authentication path, *before* applying the transaction.
+    pub recv_pre_path: AccPath,
+    /// The authentication path corresponding to the recipient's account information *after*
+    /// applying the transactions.
+    pub recv_post_path: AccPath,
+}
+
+impl UnaryRollup {
+    pub fn with_state_and_transaction(
+        ledger_params: Parameters,
+        transaction: Transaction,
+        state: &mut State,
+        validate: bool,
+    ) -> Option<UnaryRollup> {
+        if validate && !transaction.validate(&ledger_params, &*state) {
+            return None;
+        }
+
+        let initial_root = state.root();
+        let sender_id = transaction.sender;
+        let recipient_id = transaction.recipient;
+
+        let sender_acc_info = *state.id_to_account_info.get(&sender_id)?;
+        let sender_pre_path = state
+            .account_merkle_tree
+            .generate_proof(sender_id.0 as usize)
+            .unwrap();
+
+        let recv_acc_info = *state.id_to_account_info.get(&recipient_id)?;
+        let recv_pre_path = state
+            .account_merkle_tree
+            .generate_proof(recipient_id.0 as usize)
+            .unwrap();
+
+        if validate {
+            state.apply_transaction(&ledger_params, &transaction)?;
+        } else {
+            let _ = state.apply_transaction(&ledger_params, &transaction);
+        }
+
+        let final_root = state.root();
+        let sender_post_path = state
+            .account_merkle_tree
+            .generate_proof(sender_id.0 as usize)
+            .unwrap();
+        let recv_post_path = state
+            .account_merkle_tree
+            .generate_proof(recipient_id.0 as usize)
+            .unwrap();
+
+        Some(UnaryRollup {
+            ledger_params,
+            initial_root,
+            final_root,
+            transaction,
+            sender_acc_info,
+            sender_pre_path,
+            sender_post_path,
+            recv_acc_info,
+            recv_pre_path,
+            recv_post_path,
+        })
+    }
+}
+
+impl ConstraintSynthesizer<ConstraintF> for UnaryRollup {
+    fn generate_constraints(
+        self,
+        cs: ConstraintSystemRef<ConstraintF>,
+    ) -> Result<(), SynthesisError> {
+        // Declare the parameters as constants.
+        let ledger_params = ParametersVar::new_constant(
+            ark_relations::ns!(cs, "Ledger parameters"),
+            &self.ledger_params,
+        )?;
+        // Declare the initial root as a public input.
+        let initial_root = AccRootVar::new_input(ark_relations::ns!(cs, "Initial root"), || {
+            Ok(self.initial_root)
+        })?;
+        // Declare the final root as a public input.
+        let final_root =
+            AccRootVar::new_input(ark_relations::ns!(cs, "Final root"), || Ok(self.final_root))?;
+
+        // Declare transaction as a witness.
+        let tx = TransactionVar::new_witness(ark_relations::ns!(cs, "Transaction"), || {
+            Ok(self.transaction.clone())
+        })?;
+
+        // Declare the sender's initial account balance...
+        let sender_acc_info = AccountInformationVar::new_witness(
+            ark_relations::ns!(cs, "Sender Account Info"),
+            || Ok(self.sender_acc_info),
+        )?;
+        // ..., corresponding authentication path, ...
+        let sender_pre_path =
+            AccPathVar::new_witness(ark_relations::ns!(cs, "Sender Pre-Path"), || {
+                Ok(self.sender_pre_path.clone())
+            })?;
+        // ... and authentication path after the update.
+        let sender_post_path =
+            AccPathVar::new_witness(ark_relations::ns!(cs, "Sender Post-Path"), || {
+                Ok(self.sender_post_path.clone())
+            })?;
+
+        // Declare the recipient's initial account balance...
+        let recipient_acc_info = AccountInformationVar::new_witness(
+            ark_relations::ns!(cs, "Recipient Account Info"),
+            || Ok(self.recv_acc_info),
+        )?;
+        // ..., corresponding authentication path, ...
+        let recipient_pre_path =
+            AccPathVar::new_witness(ark_relations::ns!(cs, "Recipient Pre-Path"), || {
+                Ok(self.recv_pre_path.clone())
+            })?;
+        // ... and authentication path after the update.
+        let recipient_post_path =
+            AccPathVar::new_witness(ark_relations::ns!(cs, "Recipient Post-Path"), || {
+                Ok(self.recv_post_path.clone())
+            })?;
+
+        // Validate that the transaction signature and amount is correct.
+        tx.validate(
+            &ledger_params,
+            &sender_acc_info,
+            &sender_pre_path,
+            &sender_post_path,
+            &recipient_acc_info,
+            &recipient_pre_path,
+            &recipient_post_path,
+            &initial_root,
+            &final_root,
+        )?
+        .enforce_equal(&Boolean::TRUE)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ark_relations::r1cs::{
+        ConstraintLayer, ConstraintSynthesizer, ConstraintSystem, TracingMode::OnlyConstraints,
+    };
+    use ark_simple_payments::ledger::{Amount, Parameters, State};
+    use ark_simple_payments::transaction::Transaction;
+    use tracing_subscriber::layer::SubscriberExt;
+
+    fn test_cs(rollup: UnaryRollup) -> bool {
+        let mut layer = ConstraintLayer::default();
+        layer.mode = OnlyConstraints;
+        let subscriber = tracing_subscriber::Registry::default().with(layer);
+        let _guard = tracing::subscriber::set_default(subscriber);
+        let cs = ConstraintSystem::new_ref();
+        rollup.generate_constraints(cs.clone()).unwrap();
+        let result = cs.is_satisfied().unwrap();
+        if !result {
+            println!("{:?}", cs.which_is_unsatisfied());
+        }
+        result
+    }
+
+    #[test]
+    fn unary_rollup_validity_test() {
+        let mut rng = ark_std::test_rng();
+        let pp = Parameters::sample(&mut rng);
+        let mut state = State::new(32, &pp);
+        // Let's make an account for Alice.
+        let (alice_id, _alice_pk, alice_sk) =
+            state.sample_keys_and_register(&pp, &mut rng).unwrap();
+        // Let's give her some initial balance to start with.
+        state
+            .update_balance(alice_id, Amount(20))
+            .expect("Alice's account should exist");
+        // Let's make an account for Bob.
+        let (bob_id, _bob_pk, bob_sk) = state.sample_keys_and_register(&pp, &mut rng).unwrap();
+
+        // Alice wants to transfer 5 units to Bob.
+        let mut temp_state = state.clone();
+        let tx1 = Transaction::create(&pp, alice_id, bob_id, Amount(5), &alice_sk, &mut rng);
+        assert!(tx1.validate(&pp, &temp_state));
+        let rollup =
+            UnaryRollup::with_state_and_transaction(pp.clone(), tx1, &mut temp_state, true)
+                .unwrap();
+        assert!(test_cs(rollup));
+
+        let mut temp_state = state.clone();
+        let bad_tx = Transaction::create(
+            &pp,
+            alice_id,
+            bob_id,
+            Amount(5),
+            &bob_sk,
+            &mut rng,
+        );
+        assert!(!bad_tx.validate(&pp, &temp_state));
+        assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
+        let rollup =
+            UnaryRollup::with_state_and_transaction(pp.clone(), bad_tx, &mut temp_state, false)
+                .unwrap();
+        assert!(!test_cs(rollup));
     }
 }
