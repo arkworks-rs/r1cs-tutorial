@@ -14,12 +14,15 @@ To transfer value from their account to another account, the user first creates 
 * Recipient's account identifier
 * Transaction amount
 * Signature on the previous three parts, using the signature public key associated with the sender's account.
+
 The user then publishes this to the ledger, which applies the transaction via `ledger::State::apply_transaction`.
+
 The latter method updates the ledger's information if the following conditions are satisfied:
 * The sender's account exists
 * The recipient's account exists
 * The sender's account contains a balance greater than or equal to the transaction amount
 * The signature is valid with respect to the public key stored in the sender's account
+
 To enforce this logic, `Transaction::verify` performs the following steps on input a transaction `tx` and existing ledger state `State`.
 * Look up the `(SigPubKey, Balance)` tuple corresponding to the sender's ID in the Merkle tree in `State`.
 * Verify the transaction signature with respect to `SigPubKey`.
