@@ -344,14 +344,7 @@ mod test {
         assert!(test_cs(rollup));
 
         let mut temp_state = state.clone();
-        let bad_tx = Transaction::create(
-            &pp,
-            alice_id,
-            bob_id,
-            Amount(5),
-            &bob_sk,
-            &mut rng,
-        );
+        let bad_tx = Transaction::create(&pp, alice_id, bob_id, Amount(5), &bob_sk, &mut rng);
         assert!(!bad_tx.validate(&pp, &temp_state));
         assert!(matches!(temp_state.apply_transaction(&pp, &bad_tx), None));
         let rollup =
