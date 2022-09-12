@@ -33,7 +33,7 @@ impl Transaction {
         let mut message = self.sender.to_bytes_le();
         message.extend(self.recipient.to_bytes_le());
         message.extend(self.amount.to_bytes_le());
-        Schnorr::verify(&pp, &pub_key, &message, &self.signature).unwrap()
+        Schnorr::verify(pp, pub_key, &message, &self.signature).unwrap()
     }
 
     /// Check that the transaction is valid for the given ledger state. This checks
@@ -87,7 +87,7 @@ impl Transaction {
         let mut message = sender.to_bytes_le();
         message.extend(recipient.to_bytes_le());
         message.extend(amount.to_bytes_le());
-        let signature = Schnorr::sign(&parameters.sig_params, &sender_sk, &message, rng).unwrap();
+        let signature = Schnorr::sign(&parameters.sig_params, sender_sk, &message, rng).unwrap();
         Self {
             sender,
             recipient,

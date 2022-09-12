@@ -68,7 +68,7 @@ impl AllocVar<AccountInformation, ConstraintF> for AccountInformationVar {
             let cs = cs.into();
             let public_key =
                 AccountPublicKeyVar::new_variable(cs.clone(), || Ok(&info.public_key), mode)?;
-            let balance = AmountVar::new_variable(cs.clone(), || Ok(&info.balance), mode)?;
+            let balance = AmountVar::new_variable(cs, || Ok(&info.balance), mode)?;
             Ok(Self {
                 public_key,
                 balance,
